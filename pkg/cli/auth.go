@@ -46,7 +46,11 @@ var statusCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := api.NewClient(nil)
 		if err != nil {
-			return err
+			// Config exists but tokens are missing/corrupt — not authenticated
+			output.Current.Print(map[string]interface{}{
+				"authenticated": false,
+			})
+			return nil
 		}
 
 		if client.IsAuthenticated() {
@@ -61,8 +65,11 @@ var statusCmd = &cobra.Command{
 			}
 			output.Current.Print(result)
 		} else {
+			// Tokens exist but are invalid — clear them
+			config.Clear()
 			output.Current.Print(map[string]interface{}{
 				"authenticated": false,
+				"message":       "Session expired. Run `ravi auth login` to re-authenticate.",
 			})
 		}
 		return nil

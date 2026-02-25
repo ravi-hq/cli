@@ -75,7 +75,7 @@ func (c *Client) doAuthenticatedRequest(method, path string, body interface{}, r
 	// Check if token is expired and refresh if needed
 	if time.Now().After(c.config.ExpiresAt) && c.config.RefreshToken != "" {
 		if err := c.RefreshAccessToken(); err != nil {
-			return fmt.Errorf("token refresh failed: %w", err)
+			return fmt.Errorf("session expired, run `ravi auth login` to re-authenticate: %w", err)
 		}
 	}
 
@@ -88,7 +88,7 @@ func (c *Client) doAuthenticatedRequest(method, path string, body interface{}, r
 	// If 401, try to refresh token and retry once
 	if resp.StatusCode == http.StatusUnauthorized && c.config.RefreshToken != "" {
 		if err := c.RefreshAccessToken(); err != nil {
-			return fmt.Errorf("authentication failed: %w", err)
+			return fmt.Errorf("session expired, run `ravi auth login` to re-authenticate: %w", err)
 		}
 		resp, err = c.doRequest(method, path, body, true)
 		if err != nil {
@@ -163,9 +163,22 @@ func (c *Client) RefreshAccessToken() error {
 	return config.Save(c.config)
 }
 
-// IsAuthenticated returns true if the client has valid auth tokens
+// IsAuthenticated checks if the client has valid auth tokens.
+// It attempts a token refresh if the access token is expired to verify
+// the refresh token is still valid.
 func (c *Client) IsAuthenticated() bool {
-	return c.config.AccessToken != "" && c.config.RefreshToken != ""
+	if c.config.AccessToken == "" || c.config.RefreshToken == "" {
+		return false
+	}
+
+	// If the access token is expired, try to refresh to verify tokens are valid
+	if time.Now().After(c.config.ExpiresAt) {
+		if err := c.RefreshAccessToken(); err != nil {
+			return false
+		}
+	}
+
+	return true
 }
 
 // GetUserEmail returns the stored user email
