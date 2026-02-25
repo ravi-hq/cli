@@ -25,9 +25,6 @@ ravi get phone --json
 # Check authentication status
 ravi auth status --json
 
-# Check for new messages (always use --json for parsing)
-ravi inbox list --unread --json
-
 # Check for SMS messages (e.g., OTP codes)
 ravi inbox sms --unread --json
 
@@ -46,14 +43,14 @@ ravi message sms <message_id> --json # Get specific SMS by ID
 ravi message email --json            # List all email messages
 ravi message email <message_id> --json # Get specific email by ID
 
-# Password manager (E2E encrypted)
-ravi passwords list --json                     # List all entries
-ravi passwords get <uuid> --json               # Show entry (decrypted)
-ravi passwords create example.com              # Create (auto-generates password)
-ravi passwords create example.com --username me@email.com --password 'mypass'
-ravi passwords edit <uuid> --password 'new'    # Edit fields
-ravi passwords delete <uuid>                   # Delete entry
-ravi passwords generate --length 32            # Generate without storing
+# Credential vault (E2E encrypted)
+ravi vault list --json                     # List all entries
+ravi vault get <uuid> --json               # Show entry (decrypted)
+ravi vault create example.com              # Create (auto-generates password)
+ravi vault create example.com --username me@email.com --password 'mypass'
+ravi vault edit <uuid> --password 'new'    # Edit fields
+ravi vault delete <uuid>                   # Delete entry
+ravi vault generate --length 32            # Generate without storing
 ```
 
 ### Workflow: Signing Up for a Service
@@ -61,7 +58,7 @@ ravi passwords generate --length 32            # Generate without storing
 1. Get your Ravi email: `ravi get email --json | jq -r '.email'`
 2. Get your Ravi phone: `ravi get phone --json | jq -r '.phone_number'`
 3. Fill out the signup form using these credentials
-4. Wait for verification: `sleep 5 && ravi inbox list --unread --json`
+4. Wait for verification: `sleep 5 && ravi inbox sms --unread --json`
 5. Extract OTP or verification link from the message
 6. Complete the verification
 
@@ -70,8 +67,8 @@ ravi passwords generate --length 32            # Generate without storing
 ```bash
 # After triggering 2FA, wait and check inbox
 sleep 5
-ravi inbox list --type sms --unread --json  # For SMS-based 2FA
-ravi inbox list --type email --unread --json  # For email-based 2FA
+ravi inbox sms --unread --json   # For SMS-based 2FA
+ravi inbox email --unread --json # For email-based 2FA
 ```
 
 See `.claude/skills/ravi-cli.md` for detailed usage instructions.
@@ -101,7 +98,7 @@ internal/
 ├── crypto/           # E2E encryption (Argon2id + NaCl SealedBox)
 ├── output/           # Human/JSON formatters
 └── version/          # Build-time version info
-pkg/cli/              # Cobra commands (inbox, passwords, auth, etc.)
+pkg/cli/              # Cobra commands (inbox, vault, auth, etc.)
 ```
 
 ### Key Patterns

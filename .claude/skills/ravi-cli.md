@@ -1,246 +1,202 @@
-# Ravi CLI - AI Agent Inbox Access
+# Ravi CLI — Identity for AI Agents
 
-This skill teaches you how to use the Ravi CLI to access your dedicated email and SMS inbox.
-
-## What is Ravi CLI?
-
-Ravi CLI provides AI agents with their own phone number and email address. You can:
-- Receive SMS messages (including OTPs and verification codes)
-- Receive emails (including signup confirmations and verification links)
-- Use these credentials to sign up for websites and services
-- Authenticate to services that require phone/email verification
-- Store and retrieve E2E-encrypted passwords per identity
+You have access to `ravi`, a CLI that gives you your own phone number, email address, and credential vault. Use it to sign up for services, receive OTPs, complete 2FA, and store passwords — all autonomously.
 
 ## Prerequisites
 
-Before using Ravi CLI, ensure you are authenticated:
+Verify you're authenticated before using any command:
+
 ```bash
-ravi auth status
+ravi auth status --json
 ```
 
-If not authenticated, run:
+If `"authenticated": false`, tell the user to run `ravi auth login` (requires browser interaction — you cannot do this yourself).
+
+## Your Identity
+
+Get the email and phone number assigned to you:
+
 ```bash
-ravi auth login
+# Your email address (use this for signups)
+ravi get email --json
+# → {"id": 1, "email": "janedoe@ravi.app", "created_dt": "..."}
+
+# Your phone number (use this for SMS verification)
+ravi get phone --json
+# → {"id": 1, "phone_number": "+15551234567", "provider": "twilio", "created_dt": "..."}
+
+# The human who owns this account
+ravi get owner --json
+# → {"first_name": "Jane", "last_name": "Doe"}
 ```
 
-## Common Workflows
+## Receiving Messages
 
-### 1. Checking for OTP/Verification Codes
+After triggering a verification (signup form, 2FA, etc.), wait a few seconds then check your inbox.
 
-When you need to receive a verification code (e.g., after signing up for a service):
-
-```bash
-# Check for new SMS messages
-ravi inbox sms --unread --json
-
-# Check for new emails
-ravi inbox email --unread --json
-
-# Check unified inbox for all new messages
-ravi inbox list --unread --json
-```
-
-**Extracting OTP from SMS:**
-```bash
-# Get all unread SMS and look for 6-digit codes
-ravi inbox sms --unread --json | jq -r '.[] | .messages[] | select(.body | test("[0-9]{6}")) | .body'
-```
-
-### 2. Signing Up for Services
-
-When filling out a registration form that requires email/phone:
-
-1. **Get your Ravi email address:**
-   ```bash
-   ravi get email --json | jq -r '.email'
-   ```
-
-2. **Get your Ravi phone number:**
-   ```bash
-   ravi get phone --json | jq -r '.phone_number'
-   ```
-
-3. **Use these credentials in the registration form**
-
-4. **After submitting the form, check for verification:**
-   ```bash
-   # Wait a few seconds, then check for the verification message
-   ravi inbox list --unread --json
-   ```
-
-### 3. Two-Factor Authentication (2FA)
-
-When logging into a website that sends 2FA codes:
+### SMS (OTPs, verification codes)
 
 ```bash
-# For SMS-based 2FA
-ravi inbox sms --unread --json
-
-# For email-based 2FA
-ravi inbox email --unread --json
-```
-
-### 4. Viewing Message Details
-
-**View a specific SMS conversation:**
-```bash
-# List conversations first
+# List SMS conversations (grouped by sender)
 ravi inbox sms --json
 
-# Then view specific conversation
+# Only conversations with unread messages
+ravi inbox sms --unread --json
+
+# View a specific conversation (all messages)
 ravi inbox sms <conversation_id> --json
+# conversation_id format: {phone_id}_{from_number}, e.g. "1_+15559876543"
 ```
 
-**View a specific email thread:**
+**JSON shape — conversation list:**
+```json
+[{
+  "conversation_id": "1_+15559876543",
+  "from_number": "+15559876543",
+  "phone_number": "+15551234567",
+  "preview": "Your code is 847291",
+  "message_count": 3,
+  "unread_count": 1,
+  "latest_message_dt": "2026-02-25T10:30:00Z"
+}]
+```
+
+**JSON shape — conversation detail:**
+```json
+{
+  "conversation_id": "1_+15559876543",
+  "from_number": "+15559876543",
+  "messages": [
+    {"id": 42, "body": "Your code is 847291", "direction": "incoming", "is_read": false, "created_dt": "..."}
+  ]
+}
+```
+
+### Email (verification links, confirmations)
+
 ```bash
-# List threads first
+# List email threads
 ravi inbox email --json
 
-# Then view specific thread
+# Only threads with unread messages
+ravi inbox email --unread --json
+
+# View a specific thread (all messages with full content)
 ravi inbox email <thread_id> --json
 ```
 
-## Command Reference
-
-### Authentication Commands
-| Command | Description |
-|---------|-------------|
-| `ravi auth login` | Authenticate (opens browser) |
-| `ravi auth logout` | Clear credentials |
-| `ravi auth status` | Show auth status and account email |
-| `ravi auth status --json` | Get auth info as JSON |
-
-### Resource Commands
-| Command | Description |
-|---------|-------------|
-| `ravi get phone` | Get your assigned Ravi phone number |
-| `ravi get email` | Get your assigned Ravi email address |
-| `ravi get phone --json` | Get phone as JSON |
-| `ravi get email --json` | Get email as JSON |
-
-### Inbox Commands (grouped by conversation/thread)
-| Command | Description |
-|---------|-------------|
-| `ravi inbox list` | List all messages (SMS + email) |
-| `ravi inbox list --unread` | Only unread messages |
-| `ravi inbox list --type sms` | Only SMS messages |
-| `ravi inbox list --type email` | Only email messages |
-| `ravi inbox sms` | List SMS conversations |
-| `ravi inbox sms <id>` | View SMS conversation |
-| `ravi inbox email` | List email threads |
-| `ravi inbox email <id>` | View email thread |
-
-### Message Commands (individual messages)
-| Command | Description |
-|---------|-------------|
-| `ravi message sms` | List all SMS messages (flat) |
-| `ravi message sms <id>` | View specific SMS message by ID |
-| `ravi message sms --unread` | Only unread SMS messages |
-| `ravi message email` | List all email messages (flat) |
-| `ravi message email <id>` | View specific email message by ID |
-| `ravi message email --unread` | Only unread email messages |
-
-### Important Flags
-- `--json` - Output as JSON (always use this for parsing)
-- `--unread` - Filter to unread messages only
-
-## Best Practices
-
-1. **Always use `--json` flag** when you need to parse the output programmatically
-
-2. **Poll for new messages** after triggering a verification:
-   ```bash
-   # Wait a moment, then check
-   sleep 5 && ravi inbox list --unread --json
-   ```
-
-3. **Use specific filters** to reduce noise:
-   ```bash
-   # If expecting SMS OTP, filter to SMS only
-   ravi inbox list --type sms --unread --json
-   ```
-
-4. **Check both SMS and email** - some services send to either:
-   ```bash
-   ravi inbox list --unread --json
-   ```
-
-## Example: Complete Signup Flow
-
-```bash
-# 1. Get your Ravi email and phone
-EMAIL=$(ravi get email --json | jq -r '.email')
-PHONE=$(ravi get phone --json | jq -r '.phone_number')
-echo "Use this email for signup: $EMAIL"
-echo "Use this phone for signup: $PHONE"
-
-# 2. [Fill out the signup form with these credentials]
-
-# 3. Wait for verification email/SMS
-sleep 10
-
-# 4. Check for verification
-ravi inbox list --unread --json
-
-# 5. Extract verification link or code from the email
-ravi inbox email <thread_id> --json | jq -r '.messages[].text_content'
-
-# Or extract OTP code from SMS
-ravi inbox sms <conversation_id> --json | jq -r '.messages[].body'
+**JSON shape — thread detail:**
+```json
+{
+  "thread_id": "abc123",
+  "subject": "Verify your email",
+  "messages": [
+    {
+      "id": 10,
+      "from_email": "noreply@example.com",
+      "to_email": "janedoe@ravi.app",
+      "subject": "Verify your email",
+      "text_content": "Click here to verify: https://example.com/verify?token=xyz",
+      "direction": "incoming",
+      "is_read": false,
+      "created_dt": "..."
+    }
+  ]
+}
 ```
 
-### 5. Managing Passwords
+### Individual Messages (flat, not grouped)
 
-Store credentials for services you've signed up for:
+Use these when you need messages by ID rather than by conversation:
 
 ```bash
-# After signing up for a service, store the credentials
-ravi passwords create example.com --username "$EMAIL" --password 'the-password-used'
+ravi message sms --json              # All SMS messages
+ravi message sms --unread --json     # Unread only
+ravi message sms <message_id> --json # Specific message
 
-# Or auto-generate a password during signup
-ravi passwords create example.com
-# Outputs: Generated password: xK9#mL2...  (use this in the signup form)
+ravi message email --json              # All email messages
+ravi message email --unread --json     # Unread only
+ravi message email <message_id> --json # Specific message
+```
 
-# Retrieve stored credentials later
-ravi passwords list --json
-ravi passwords get <uuid> --json
+## Credential Vault
 
-# Update a password
-ravi passwords edit <uuid> --password 'new-password'
+Store and retrieve passwords for services you sign up for. All fields are E2E encrypted.
+
+```bash
+# Create entry (auto-generates password if --password not given)
+ravi vault create example.com --json
+ravi vault create example.com --username "me@ravi.app" --password 'S3cret!' --json
+
+# List all entries
+ravi vault list --json
+
+# Retrieve (decrypted)
+ravi vault get <uuid> --json
+
+# Update
+ravi vault edit <uuid> --password 'NewPass!' --json
+
+# Delete
+ravi vault delete <uuid> --json
 
 # Generate a password without storing it
-ravi passwords generate --length 24 --json | jq -r '.password'
+ravi vault generate --length 24 --json
+# → {"password": "xK9#mL2..."}
 ```
 
-**Note:** URL inputs are automatically cleaned to domains (e.g. `https://mail.google.com/inbox` → `google.com`). Username defaults to your identity email if not specified. Password is auto-generated if not provided.
+**Create flags:** `--username`, `--password`, `--notes`, `--generate`, `--length` (default 16), `--no-special`, `--no-digits`, `--exclude-chars`
 
-### Password Commands
-| Command | Description |
-|---------|-------------|
-| `ravi passwords list` | List all stored passwords |
-| `ravi passwords get <uuid>` | Show a stored password (decrypted) |
-| `ravi passwords create <domain>` | Create a new password entry |
-| `ravi passwords edit <uuid>` | Edit a stored password entry |
-| `ravi passwords delete <uuid>` | Delete a stored password entry |
-| `ravi passwords generate` | Generate a random password |
+## Common Workflows
 
-**Create flags:** `--username`, `--password`, `--generate`, `--length` (default: 16), `--no-special`, `--no-digits`, `--exclude-chars`, `--notes`
+### Sign up for a service
 
-## Troubleshooting
-
-**Not authenticated:**
 ```bash
-ravi auth login
+# 1. Get your credentials
+EMAIL=$(ravi get email --json | jq -r '.email')
+PHONE=$(ravi get phone --json | jq -r '.phone_number')
+
+# 2. Use $EMAIL and $PHONE in the signup form
+
+# 3. Generate and store a password
+CREDS=$(ravi vault create example.com --username "$EMAIL" --json)
+PASSWORD=$(echo "$CREDS" | jq -r '.password')
+# Use $PASSWORD in the signup form
+
+# 4. Wait for verification
+sleep 5
+ravi inbox sms --unread --json   # Check for SMS OTP
+ravi inbox email --unread --json # Check for email verification
 ```
 
-**No messages appearing:**
-- Verify the correct email/phone was used
-- Wait a few more seconds for delivery
-- Check spam filters on the service side
+### Extract an OTP code from SMS
 
-**Token expired:**
-The CLI automatically refreshes tokens. If issues persist:
 ```bash
-ravi auth logout
-ravi auth login
+# Get unread SMS, extract 4-8 digit codes
+ravi inbox sms --unread --json | jq -r '.[].preview' | grep -oE '[0-9]{4,8}'
 ```
+
+### Extract a verification link from email
+
+```bash
+# Get the latest unread email thread, pull URLs from text content
+THREAD_ID=$(ravi inbox email --unread --json | jq -r '.[0].thread_id')
+ravi inbox email "$THREAD_ID" --json | jq -r '.messages[].text_content' | grep -oE 'https?://[^ ]+'
+```
+
+### Complete 2FA login
+
+```bash
+# After triggering 2FA on a website:
+sleep 5
+CODE=$(ravi inbox sms --unread --json | jq -r '.[0].preview' | grep -oE '[0-9]{4,8}' | head -1)
+# Use $CODE to complete the login
+```
+
+## Important Notes
+
+- **Always use `--json`** — all commands support it. Human-readable output is not designed for parsing.
+- **Poll, don't rush** — SMS/email delivery takes 2-10 seconds. Use `sleep 5` before checking.
+- **Auth is automatic** — token refresh happens transparently. If you get auth errors, ask the user to re-login.
+- **E2E encryption is transparent** — the CLI encrypts vault fields before sending and decrypts on retrieval. You see plaintext.
+- **Domain cleaning** — `ravi vault create` auto-cleans URLs to base domains (e.g., `https://mail.google.com/inbox` becomes `google.com`).
