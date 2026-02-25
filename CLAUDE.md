@@ -7,6 +7,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 Ravi CLI is a Go command-line client for the Ravi backend service. It provides programmatic access to inbox (emails and SMS) for AI agents.
 
 **Purpose:** AI agents get their own dedicated phone number and email address through Ravi. They can use these to:
+
 - Sign up for websites and services (use the email/phone in registration forms)
 - Receive OTPs and verification codes
 - Complete 2FA authentication flows
@@ -71,7 +72,7 @@ ravi inbox sms --unread --json   # For SMS-based 2FA
 ravi inbox email --unread --json # For email-based 2FA
 ```
 
-See `.claude/skills/ravi-cli.md` for detailed usage instructions.
+See `.claude/skills/ravi-cli.md` for detailed usage instructions, or install the [Claude Code plugin](docs/claude-code-plugin.md) to use `ravi` from any Claude Code session.
 
 ## Commands
 

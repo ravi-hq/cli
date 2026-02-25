@@ -13,12 +13,14 @@ Ravi CLI enables AI agents to receive and read communications on dedicated phone
 - **Store and retrieve E2E-encrypted passwords** per identity
 
 Each agent gets their own dedicated inbox with:
+
 - A unique phone number for SMS
 - A unique email address for email
 
 ## Use Cases
 
 ### Receiving OTPs for Website Login
+
 ```bash
 # Check for recent SMS messages containing verification codes
 ravi inbox sms --unread --json | jq '.[0].messages[].body'
@@ -28,7 +30,9 @@ ravi inbox email --unread
 ```
 
 ### Signing Up for Services
+
 When filling out registration forms:
+
 1. Use `ravi get email --json` to get your assigned email address
 2. Use `ravi get phone --json` to get your assigned phone number
 3. Fill out the registration form with these credentials
@@ -36,6 +40,7 @@ When filling out registration forms:
 5. Complete the signup process
 
 ### Automated Verification Flows
+
 ```bash
 # Poll for new messages in JSON format (ideal for automation)
 ravi inbox --unread --json
@@ -49,37 +54,53 @@ ravi inbox --type email --unread --json
 
 ## Installation
 
+### Pre-built Binaries
+
+Download the latest release for your platform from the [releases page](https://github.com/ravi-hq/cli/releases).
+
 ### From Source
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/ravi-hq/cli.git
 cd cli
 make build API_URL=https://ravi.app
 ```
 
-### Pre-built Binaries
+### Claude Code Plugin
 
-Download the latest release for your platform from the releases page.
+If you use [Claude Code](https://claude.ai/code), install the plugin so Claude can use `ravi` autonomously:
+
+```bash
+claude plugin marketplace add ravi-hq/claude-code-plugin
+claude plugin install ravi@ravi
+```
+
+See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 
 ## Quick Start
 
 1. **Login to your account:**
+
    ```bash
    ravi auth login
    ```
+
    This opens your browser for OAuth authentication.
 
 2. **Check your inbox:**
+
    ```bash
    ravi inbox list
    ```
 
 3. **View only unread messages:**
+
    ```bash
    ravi inbox list --unread
    ```
 
 4. **Get messages in JSON format (for automation):**
+
    ```bash
    ravi inbox list --json
    ```
@@ -165,6 +186,7 @@ ravi inbox email --json | jq -r '.[0].subject'
 ### JSON Response Structure
 
 **Inbox List:**
+
 ```json
 [
   {
@@ -178,6 +200,7 @@ ravi inbox email --json | jq -r '.[0].subject'
 ```
 
 **SMS Conversation Detail:**
+
 ```json
 {
   "conversation_id": "conv_123",
@@ -198,6 +221,7 @@ ravi inbox email --json | jq -r '.[0].subject'
 Credentials are stored in `~/.ravi/config.json` with secure file permissions (0600).
 
 The config file contains:
+
 - Access token (auto-refreshes when expired)
 - Refresh token
 - User email address
