@@ -1,6 +1,9 @@
 package api
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // DeviceCodeRequest represents the request body for initiating the OAuth device code flow.
 // It is empty as no parameters are required to start the flow.
@@ -93,9 +96,10 @@ type EmailMessage struct {
 	Subject     string    `json:"subject"`
 	TextContent string    `json:"text_content"`
 	HTMLContent string    `json:"html_content"`
-	Direction   string    `json:"direction"`
-	IsRead      bool      `json:"is_read"`
-	CreatedDt   time.Time `json:"created_dt"`
+	Direction   string       `json:"direction"`
+	IsRead      bool         `json:"is_read"`
+	Attachments []Attachment `json:"attachments"`
+	CreatedDt   time.Time    `json:"created_dt"`
 }
 
 // SMSConversation represents an SMS conversation summary from the /api/sms-inbox/ endpoint.
@@ -190,11 +194,12 @@ type EmailMessageDetail struct {
 	Subject     string    `json:"subject"`
 	TextContent string    `json:"text_content"`
 	HTMLContent string    `json:"html_content"`
-	Direction   string    `json:"direction"`
-	IsRead      bool      `json:"is_read"`
-	MessageID   string    `json:"message_id"`
-	ThreadID    string    `json:"thread_id"`
-	CreatedDt   time.Time `json:"created_dt"`
+	Direction   string       `json:"direction"`
+	IsRead      bool         `json:"is_read"`
+	Attachments []Attachment `json:"attachments"`
+	MessageID   string       `json:"message_id"`
+	ThreadID    string       `json:"thread_id"`
+	CreatedDt   time.Time    `json:"created_dt"`
 }
 
 // PasswordEntry represents a stored website credential.
@@ -245,4 +250,58 @@ type BindIdentityRequest struct {
 type BindIdentityResponse struct {
 	Access  string `json:"access"`
 	Refresh string `json:"refresh"`
+}
+
+// Attachment represents an email attachment metadata.
+type Attachment struct {
+	UUID        string `json:"uuid"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	Size        int64  `json:"size"`
+	IsInline    bool   `json:"is_inline"`
+	DownloadURL string `json:"download_url,omitempty"`
+}
+
+// PresignRequest is the request body for getting a presigned upload URL.
+type PresignRequest struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	Size        int64  `json:"size"`
+}
+
+// PresignResponse contains the presigned URL and attachment UUID.
+type PresignResponse struct {
+	UUID       string `json:"uuid"`
+	UploadURL  string `json:"upload_url"`
+	StorageKey string `json:"storage_key"`
+}
+
+// ComposeRequest is the request body for composing a new email.
+type ComposeRequest struct {
+	ToEmail         string   `json:"to_email"`
+	Subject         string   `json:"subject"`
+	Content         string   `json:"content"`
+	CC              []string `json:"cc,omitempty"`
+	BCC             []string `json:"bcc,omitempty"`
+	AttachmentUUIDs []string `json:"attachment_uuids,omitempty"`
+}
+
+// ReplyRequest is the request body for replying to an email.
+type ReplyRequest struct {
+	Content         string   `json:"content"`
+	Subject         string   `json:"subject"`
+	AttachmentUUIDs []string `json:"attachment_uuids,omitempty"`
+}
+
+// RateLimitError represents a 429 Too Many Requests response from the API.
+type RateLimitError struct {
+	Detail            string `json:"detail"`
+	RetryAfterSeconds int    `json:"retry_after_seconds"`
+}
+
+func (e *RateLimitError) Error() string {
+	if e.RetryAfterSeconds > 0 {
+		return fmt.Sprintf("Rate limited: %s (retry in %ds)", e.Detail, e.RetryAfterSeconds)
+	}
+	return fmt.Sprintf("Rate limited: %s", e.Detail)
 }

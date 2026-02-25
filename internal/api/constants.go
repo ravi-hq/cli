@@ -24,4 +24,7 @@ const (
 	PathVault         = "/api/vault/"
 	PathIdentities    = "/api/identities/"
 	PathBindIdentity  = "/api/auth/bind-identity/"
+
+	PathEmailAttachmentPresign = "/api/email-attachments/presign/"
+	PathEmailCompose           = "/api/email-messages/compose/"
 )

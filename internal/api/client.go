@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -104,6 +105,21 @@ func (c *Client) parseResponse(resp *http.Response, result interface{}) error {
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		var rlErr RateLimitError
+		if json.Unmarshal(bodyBytes, &rlErr) != nil || rlErr.Detail == "" {
+			rlErr.Detail = "Request was throttled."
+		}
+		if rlErr.RetryAfterSeconds == 0 {
+			if ra := resp.Header.Get("Retry-After"); ra != "" {
+				if seconds, parseErr := strconv.Atoi(ra); parseErr == nil {
+					rlErr.RetryAfterSeconds = seconds
+				}
+			}
+		}
+		return &rlErr
 	}
 
 	if resp.StatusCode >= 400 {

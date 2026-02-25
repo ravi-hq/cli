@@ -17,6 +17,11 @@ ravi inbox email --unread --json         # Email threads (grouped)
 ravi message sms --json                  # Flat SMS list
 ravi message email <message_id> --json   # Specific email by ID
 
+# Send emails
+ravi email compose --to user@example.com --subject "Hi" --body "<p>Hello</p>" --json
+ravi email reply <message_id> --subject "Re: Hi" --body "<p>Reply</p>" --json
+ravi email reply-all <message_id> --subject "Re: Hi" --body "<p>Reply all</p>" --json
+
 # Credential vault (E2E encrypted)
 ravi vault list --json                   # List all entries
 ravi vault get <uuid> --json             # Show entry (decrypted)
@@ -59,7 +64,10 @@ internal/
 ├── api/               # HTTP client, API types, endpoint constants
 │   ├── client.go      # NewClient, auto token refresh, authenticated requests
 │   ├── types.go       # ~250 lines of API response structs
-│   └── constants.go   # API endpoint paths
+│   ├── constants.go   # API endpoint paths
+│   ├── email.go       # Compose, reply, reply-all, presign API methods
+│   ├── attachment.go   # UploadAttachment orchestrator (presign + upload)
+│   └── validation.go   # Client-side extension blocklist + size check
 ├── auth/              # OAuth device code flow orchestration
 ├── config/            # Token/config file at ~/.ravi/config.json
 ├── crypto/            # E2E encryption (Argon2id + NaCl SealedBox)
@@ -67,7 +75,7 @@ internal/
 │   └── session.go     # PIN prompting, keypair caching (per-process)
 ├── output/            # Human/JSON formatters (switched by --json flag)
 └── version/           # Build-time version info (ldflags)
-pkg/cli/               # Cobra commands (inbox, vault, auth, get, message)
+pkg/cli/               # Cobra commands (inbox, vault, auth, get, message, email send)
     └── e2e.go         # Helpers: ensureKeyPair(), tryDecrypt(), encodePublicKey()
 ```
 
