@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ravi-technologies/sunday-cli/internal/config"
-	"github.com/ravi-technologies/sunday-cli/internal/output"
+	"github.com/ravi-hq/cli/internal/config"
+	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -161,8 +161,8 @@ func TestAuthStatus_Authenticated(t *testing.T) {
 	defer cleanup()
 
 	// Create a config file with valid credentials
-	sundayDir := filepath.Join(tmpDir, ".sunday")
-	if err := os.MkdirAll(sundayDir, 0700); err != nil {
+	raviDir := filepath.Join(tmpDir, ".ravi")
+	if err := os.MkdirAll(raviDir, 0700); err != nil {
 		t.Fatalf("Failed to create directory: %v", err)
 	}
 
@@ -227,9 +227,9 @@ func TestAuthLogout_ClearsConfig(t *testing.T) {
 	defer func() { output.Current = originalFormatter }()
 
 	// Create a config file with credentials
-	sundayDir := filepath.Join(tmpDir, ".sunday")
-	configPath := filepath.Join(sundayDir, "config.json")
-	if err := os.MkdirAll(sundayDir, 0700); err != nil {
+	raviDir := filepath.Join(tmpDir, ".ravi")
+	configPath := filepath.Join(raviDir, "config.json")
+	if err := os.MkdirAll(raviDir, 0700); err != nil {
 		t.Fatalf("Failed to create directory: %v", err)
 	}
 

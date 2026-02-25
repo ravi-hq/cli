@@ -1,4 +1,4 @@
-module github.com/ravi-technologies/sunday-cli
+module github.com/ravi-hq/cli
 
 go 1.25.6
 

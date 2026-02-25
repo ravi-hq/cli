@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/ravi-technologies/sunday-cli/internal/api"
-	"github.com/ravi-technologies/sunday-cli/internal/config"
-	"github.com/ravi-technologies/sunday-cli/internal/crypto"
-	"github.com/ravi-technologies/sunday-cli/internal/output"
+	"github.com/ravi-hq/cli/internal/api"
+	"github.com/ravi-hq/cli/internal/config"
+	"github.com/ravi-hq/cli/internal/crypto"
+	"github.com/ravi-hq/cli/internal/output"
 )
 
 const (
@@ -235,11 +235,11 @@ func (d *DeviceFlow) selectAndBindIdentity(cfg *config.Config) error {
 }
 
 // identityLabel returns a human-readable label for an identity
-// e.g. "Personal (user@sunday.app)" or just "Personal".
+// e.g. "Personal (user@ravi.app)" or just "Personal".
 func identityLabel(id api.Identity) string {
-	detail := id.SundayEmail
-	if detail == "" && id.SundayPhone != "" {
-		detail = id.SundayPhone
+	detail := id.Email
+	if detail == "" && id.Phone != "" {
+		detail = id.Phone
 	}
 	if detail != "" {
 		return fmt.Sprintf("%s (%s)", id.Name, detail)

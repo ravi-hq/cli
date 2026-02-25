@@ -24,7 +24,7 @@ var cachedKeyPair *KeyPair
 // PIN, derives the keypair, and verifies it against the server-stored verifier.
 //
 // saltB64 is the base64-encoded 16-byte salt from the server.
-// verifierB64 is the base64-encoded SealedBox ciphertext of "sunday-e2e-verify".
+// verifierB64 is the base64-encoded SealedBox ciphertext of "ravi-e2e-verify".
 func GetOrPromptKeyPair(saltB64, verifierB64 string) (*KeyPair, error) {
 	if cachedKeyPair != nil {
 		return cachedKeyPair, nil

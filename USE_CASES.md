@@ -27,7 +27,7 @@ This creates a **human bottleneck** that breaks the autonomy that makes agents u
 
 Agents can independently create accounts on any service:
 
-| Scenario | Without Sunday | With Sunday |
+| Scenario | Without Ravi | With Ravi |
 |----------|---------------|-------------|
 | Sign up for a SaaS tool | Agent waits for human to forward OTP | Agent receives OTP directly, completes signup |
 | Create social media account | Blocked at phone verification | Agent verifies via SMS |
@@ -36,7 +36,7 @@ Agents can independently create accounts on any service:
 **Example workflow:**
 ```
 Agent needs to use Notion API
-→ Creates Notion account with Sunday email
+→ Creates Notion account with Ravi email
 → Receives verification email
 → Extracts verification link
 → Completes signup
@@ -279,7 +279,7 @@ Giving AI agents their own inbox is about **removing the assumption that only hu
 
 The internet was built for humans. Every form, every verification, every confirmation assumes a human with an email and phone. AI agents inherit a world not built for them.
 
-Sunday bridges this gap. It gives agents the identity primitives they need to operate in a human-designed digital world.
+Ravi bridges this gap. It gives agents the identity primitives they need to operate in a human-designed digital world.
 
 This isn't just convenience—it's what enables agents to go from "assistants that help humans do things" to "autonomous actors that do things on behalf of humans."
 

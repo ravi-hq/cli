@@ -1,5 +1,5 @@
 // Package api provides the HTTP client and type definitions for communicating
-// with the Sunday backend API.
+// with the Ravi backend API.
 //
 // The package includes:
 //   - Client: HTTP client with automatic token refresh and authentication

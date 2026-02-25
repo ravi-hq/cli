@@ -14,8 +14,8 @@ permissions:
   contents: write
 
 env:
-  API_URL: https://sunday.ravi.app
-  HOMEBREW_TAP_REPO: ravi-technologies/homebrew-tap
+  API_URL: https://ravi.app
+  HOMEBREW_TAP_REPO: ravi-hq/homebrew-tap
 
 jobs:
   release:
@@ -52,7 +52,7 @@ jobs:
           VERSION_TAG: ${{ steps.version.outputs.tag }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
-          MODULE="github.com/ravi-technologies/sunday-cli"
+          MODULE="github.com/ravi-hq/cli"
           BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           LDFLAGS="-X '${MODULE}/internal/version.Version=${VERSION_TAG}' \
                    -X '${MODULE}/internal/version.Commit=${COMMIT_SHA}' \
@@ -63,9 +63,9 @@ jobs:
           for platform in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
             GOOS="${platform%/*}"
             GOARCH="${platform#*/}"
-            echo "Building sunday-${GOOS}-${GOARCH}..."
+            echo "Building ravi-${GOOS}-${GOARCH}..."
             CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "$LDFLAGS" \
-              -o "dist/sunday-${GOOS}-${GOARCH}/sunday" ./cmd/sunday
+              -o "dist/ravi-${GOOS}-${GOARCH}/ravi" ./cmd/ravi
           done
 
       - name: Create archives and checksums
@@ -73,10 +73,10 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         working-directory: dist
         run: |
-          for dir in sunday-*/; do
+          for dir in ravi-*/; do
             name="${dir%/}"
-            archive="sunday-${VERSION}-${name#sunday-}.tar.gz"
-            tar -czf "$archive" -C "$name" sunday
+            archive="ravi-${VERSION}-${name#ravi-}.tar.gz"
+            tar -czf "$archive" -C "$name" ravi
             sha256sum "$archive" >> checksums.txt
           done
           cat checksums.txt
@@ -91,9 +91,9 @@ jobs:
             gh release delete "$TAG" --yes
           fi
           gh release create "$TAG" \
-            --title "sunday v${VERSION}" \
+            --title "ravi v${VERSION}" \
             --generate-notes \
-            dist/sunday-${VERSION}-*.tar.gz \
+            dist/ravi-${VERSION}-*.tar.gz \
             dist/checksums.txt
 
       - name: Update Homebrew formula
@@ -109,47 +109,47 @@ jobs:
           git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP_REPO}.git" tap
           cd tap
 
-          cat > Formula/sunday.rb <<FORMULA
-          class Sunday < Formula
-            desc "CLI for AI agents to access email, SMS, and passwords via Sunday"
-            homepage "https://github.com/ravi-technologies/sunday-cli"
+          cat > Formula/ravi.rb <<FORMULA
+          class Ravi < Formula
+            desc "CLI for AI agents to access email, SMS, and passwords via Ravi"
+            homepage "https://github.com/ravi-hq/cli"
             version "${VERSION}"
             license "Proprietary"
 
             on_macos do
               on_arm do
-                url "https://github.com/ravi-technologies/sunday-cli/releases/download/v#{version}/sunday-#{version}-darwin-arm64.tar.gz"
+                url "https://github.com/ravi-hq/cli/releases/download/v#{version}/ravi-#{version}-darwin-arm64.tar.gz"
                 sha256 "${SHA_DARWIN_ARM64}"
               end
               on_intel do
-                url "https://github.com/ravi-technologies/sunday-cli/releases/download/v#{version}/sunday-#{version}-darwin-amd64.tar.gz"
+                url "https://github.com/ravi-hq/cli/releases/download/v#{version}/ravi-#{version}-darwin-amd64.tar.gz"
                 sha256 "${SHA_DARWIN_AMD64}"
               end
             end
 
             on_linux do
               on_arm do
-                url "https://github.com/ravi-technologies/sunday-cli/releases/download/v#{version}/sunday-#{version}-linux-arm64.tar.gz"
+                url "https://github.com/ravi-hq/cli/releases/download/v#{version}/ravi-#{version}-linux-arm64.tar.gz"
                 sha256 "${SHA_LINUX_ARM64}"
               end
               on_intel do
-                url "https://github.com/ravi-technologies/sunday-cli/releases/download/v#{version}/sunday-#{version}-linux-amd64.tar.gz"
+                url "https://github.com/ravi-hq/cli/releases/download/v#{version}/ravi-#{version}-linux-amd64.tar.gz"
                 sha256 "${SHA_LINUX_AMD64}"
               end
             end
 
             def install
-              bin.install "sunday"
+              bin.install "ravi"
             end
 
             test do
-              assert_match "sunday version", shell_output("#{bin}/sunday version")
+              assert_match "ravi version", shell_output("#{bin}/ravi version")
             end
           end
           FORMULA
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/sunday.rb
-          git commit -m "sunday ${VERSION}"
+          git add Formula/ravi.rb
+          git commit -m "ravi ${VERSION}"
           git push

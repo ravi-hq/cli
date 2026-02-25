@@ -3,10 +3,10 @@ package cli
 import (
 	"fmt"
 
-	"github.com/ravi-technologies/sunday-cli/internal/api"
-	"github.com/ravi-technologies/sunday-cli/internal/auth"
-	"github.com/ravi-technologies/sunday-cli/internal/config"
-	"github.com/ravi-technologies/sunday-cli/internal/output"
+	"github.com/ravi-hq/cli/internal/api"
+	"github.com/ravi-hq/cli/internal/auth"
+	"github.com/ravi-hq/cli/internal/config"
+	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -17,8 +17,8 @@ var authCmd = &cobra.Command{
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Authenticate with Sunday",
-	Long:  "Start the device code flow to authenticate with your Sunday account.",
+	Short: "Authenticate with Ravi",
+	Long:  "Start the device code flow to authenticate with your Ravi account.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flow, err := auth.NewDeviceFlow()
 		if err != nil {

@@ -1,6 +1,6 @@
-// Package crypto provides end-to-end encryption primitives for the Sunday CLI.
+// Package crypto provides end-to-end encryption primitives for the Ravi CLI.
 //
-// It implements the same cryptographic protocol used by the Sunday backend and
+// It implements the same cryptographic protocol used by the Ravi backend and
 // dashboard so that content encrypted server-side can be decrypted locally on
 // the user's machine. The protocol is:
 //

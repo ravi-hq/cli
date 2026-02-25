@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ravi-technologies/sunday-cli/internal/config"
-	"github.com/ravi-technologies/sunday-cli/internal/version"
+	"github.com/ravi-hq/cli/internal/config"
+	"github.com/ravi-hq/cli/internal/version"
 )
 
 type Client struct {

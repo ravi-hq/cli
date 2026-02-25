@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ravi-technologies/sunday-cli/internal/config"
-	"github.com/ravi-technologies/sunday-cli/internal/crypto"
+	"github.com/ravi-hq/cli/internal/config"
+	"github.com/ravi-hq/cli/internal/crypto"
 )
 
 // ensureKeyPair loads the persisted decryption keypair from the config file.
@@ -22,7 +22,7 @@ func ensureKeyPair() (*crypto.KeyPair, error) {
 		if cfg.AccessToken != "" {
 			return nil, fmt.Errorf("encryption not set up — complete PIN setup on the dashboard first")
 		}
-		return nil, fmt.Errorf("not authenticated — run `sunday auth login` first")
+		return nil, fmt.Errorf("not authenticated — run `ravi auth login` first")
 	}
 
 	privBytes, err := base64.StdEncoding.DecodeString(cfg.PrivateKey)

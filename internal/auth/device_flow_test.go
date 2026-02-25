@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/ravi-technologies/sunday-cli/internal/version"
+	"github.com/ravi-hq/cli/internal/version"
 )
 
 // withTempHome is a test helper that temporarily changes the HOME environment variable

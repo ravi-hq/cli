@@ -1,8 +1,8 @@
-// Package main is the entry point for the Sunday CLI application.
+// Package main is the entry point for the Ravi CLI application.
 //
 // The application is built with the API base URL injected at build time:
 //
-//	make build API_URL=https://api.sunday.example.com
+//	make build API_URL=https://ravi.app
 //
 // Run with --help to see available commands.
 package main
@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ravi-technologies/sunday-cli/internal/output"
-	"github.com/ravi-technologies/sunday-cli/pkg/cli"
+	"github.com/ravi-hq/cli/internal/output"
+	"github.com/ravi-hq/cli/pkg/cli"
 )
 
 func main() {

@@ -30,6 +30,7 @@ Thumbs.db
 dist/
 
 # Local config (contains tokens)
+.ravi/
 .sunday/
 
 # Claude Code local settings

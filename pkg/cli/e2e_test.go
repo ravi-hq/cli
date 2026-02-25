@@ -9,18 +9,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ravi-technologies/sunday-cli/internal/config"
-	"github.com/ravi-technologies/sunday-cli/internal/crypto"
+	"github.com/ravi-hq/cli/internal/config"
+	"github.com/ravi-hq/cli/internal/crypto"
 	"golang.org/x/crypto/nacl/box"
 )
 
-// saveTestConfig writes a config to the temp home's ~/.sunday/config.json.
+// saveTestConfig writes a config to the temp home's ~/.ravi/config.json.
 func saveTestConfig(t *testing.T, tmpDir string, cfg *config.Config) {
 	t.Helper()
 
-	sundayDir := filepath.Join(tmpDir, ".sunday")
-	if err := os.MkdirAll(sundayDir, 0700); err != nil {
-		t.Fatalf("Failed to create .sunday directory: %v", err)
+	raviDir := filepath.Join(tmpDir, ".ravi")
+	if err := os.MkdirAll(raviDir, 0700); err != nil {
+		t.Fatalf("Failed to create .ravi directory: %v", err)
 	}
 
 	data, err := json.MarshalIndent(cfg, "", "  ")
@@ -28,7 +28,7 @@ func saveTestConfig(t *testing.T, tmpDir string, cfg *config.Config) {
 		t.Fatalf("Failed to marshal config: %v", err)
 	}
 
-	configPath := filepath.Join(sundayDir, "config.json")
+	configPath := filepath.Join(raviDir, "config.json")
 	if err := os.WriteFile(configPath, data, 0600); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}

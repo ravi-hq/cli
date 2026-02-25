@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ravi-technologies/sunday-cli/internal/config"
+	"github.com/ravi-hq/cli/internal/config"
 )
 
 // TestGetEncryptionMeta_Success verifies that GetEncryptionMeta parses a

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ravi-technologies/sunday-cli/internal/api"
-	"github.com/ravi-technologies/sunday-cli/internal/output"
+	"github.com/ravi-hq/cli/internal/api"
+	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +67,7 @@ func listSMSConversations(client *api.Client) error {
 		rows[i] = []string{
 			truncate(c.ConversationID, 20),
 			c.FromNumber,
-			c.SundayPhoneNumber,
+			c.PhoneNumber,
 			truncate(c.Preview, 25),
 			fmt.Sprintf("%d", c.MessageCount),
 			fmt.Sprintf("%d", c.UnreadCount),
@@ -100,13 +100,13 @@ func showSMSConversation(client *api.Client, conversationID string) error {
 	// Human-readable conversation display
 	fmt.Printf("Conversation: %s\n", conversation.ConversationID)
 	fmt.Printf("From: %s\n", conversation.FromNumber)
-	fmt.Printf("Your Number: %s\n", conversation.SundayPhone)
+	fmt.Printf("Your Number: %s\n", conversation.Phone)
 	fmt.Printf("Messages: %d\n", conversation.MessageCount)
 	fmt.Println(strings.Repeat("-", 60))
 
 	for _, msg := range conversation.Messages {
 		direction := "->"
-		sender := conversation.SundayPhone
+		sender := conversation.Phone
 		if msg.Direction == "incoming" {
 			direction = "<-"
 			sender = conversation.FromNumber

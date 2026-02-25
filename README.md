@@ -1,10 +1,10 @@
-# Sunday CLI
+# Ravi CLI
 
 Command-line interface for AI agents to access their inbox (email and SMS).
 
 ## Overview
 
-Sunday CLI enables AI agents to receive and read communications on dedicated phone numbers and email addresses. This allows agents to:
+Ravi CLI enables AI agents to receive and read communications on dedicated phone numbers and email addresses. This allows agents to:
 
 - **Receive OTPs and verification codes** to authenticate with websites and services
 - **Sign up for services** using the assigned phone number and email address
@@ -21,30 +21,30 @@ Each agent gets their own dedicated inbox with:
 ### Receiving OTPs for Website Login
 ```bash
 # Check for recent SMS messages containing verification codes
-sunday inbox sms --unread --json | jq '.[0].messages[].body'
+ravi inbox sms --unread --json | jq '.[0].messages[].body'
 
 # Get the latest email with OTP
-sunday inbox email --unread
+ravi inbox email --unread
 ```
 
 ### Signing Up for Services
 When filling out registration forms:
-1. Use `sunday get email --json` to get your assigned email address
-2. Use `sunday get phone --json` to get your assigned phone number
+1. Use `ravi get email --json` to get your assigned email address
+2. Use `ravi get phone --json` to get your assigned phone number
 3. Fill out the registration form with these credentials
-4. Monitor `sunday inbox list --unread --json` for the verification code
+4. Monitor `ravi inbox list --unread --json` for the verification code
 5. Complete the signup process
 
 ### Automated Verification Flows
 ```bash
 # Poll for new messages in JSON format (ideal for automation)
-sunday inbox --unread --json
+ravi inbox --unread --json
 
 # Filter for SMS only
-sunday inbox --type sms --unread --json
+ravi inbox --type sms --unread --json
 
 # Filter for email only
-sunday inbox --type email --unread --json
+ravi inbox --type email --unread --json
 ```
 
 ## Installation
@@ -53,8 +53,8 @@ sunday inbox --type email --unread --json
 
 ```bash
 git clone <repo-url>
-cd sunday-cli
-make build API_URL=https://api.sunday.example.com
+cd cli
+make build API_URL=https://ravi.app
 ```
 
 ### Pre-built Binaries
@@ -65,23 +65,23 @@ Download the latest release for your platform from the releases page.
 
 1. **Login to your account:**
    ```bash
-   sunday auth login
+   ravi auth login
    ```
    This opens your browser for OAuth authentication.
 
 2. **Check your inbox:**
    ```bash
-   sunday inbox list
+   ravi inbox list
    ```
 
 3. **View only unread messages:**
    ```bash
-   sunday inbox list --unread
+   ravi inbox list --unread
    ```
 
 4. **Get messages in JSON format (for automation):**
    ```bash
-   sunday inbox list --json
+   ravi inbox list --json
    ```
 
 ## Commands
@@ -90,52 +90,52 @@ Download the latest release for your platform from the releases page.
 
 | Command | Description |
 |---------|-------------|
-| `sunday auth login` | Authenticate via browser OAuth flow |
-| `sunday auth logout` | Clear stored credentials |
-| `sunday auth status` | Show current authentication status |
+| `ravi auth login` | Authenticate via browser OAuth flow |
+| `ravi auth logout` | Clear stored credentials |
+| `ravi auth status` | Show current authentication status |
 
 ### Resources
 
 | Command | Description |
 |---------|-------------|
-| `sunday get email` | Get your assigned Sunday email address |
-| `sunday get phone` | Get your assigned Sunday phone number |
+| `ravi get email` | Get your assigned Ravi email address |
+| `ravi get phone` | Get your assigned Ravi phone number |
 
 ### Inbox (grouped by conversation/thread)
 
 | Command | Description |
 |---------|-------------|
-| `sunday inbox list` | List all inbox messages (combined SMS + email) |
-| `sunday inbox list --type email` | Filter by message type (email/sms) |
-| `sunday inbox list --type sms` | Filter to SMS messages only |
-| `sunday inbox list --direction incoming` | Filter by direction (incoming/outgoing) |
-| `sunday inbox list --unread` | Show only unread messages |
-| `sunday inbox email` | List email threads |
-| `sunday inbox email <thread-id>` | View specific email thread with all messages |
-| `sunday inbox sms` | List SMS conversations |
-| `sunday inbox sms <conversation-id>` | View specific SMS conversation with all messages |
+| `ravi inbox list` | List all inbox messages (combined SMS + email) |
+| `ravi inbox list --type email` | Filter by message type (email/sms) |
+| `ravi inbox list --type sms` | Filter to SMS messages only |
+| `ravi inbox list --direction incoming` | Filter by direction (incoming/outgoing) |
+| `ravi inbox list --unread` | Show only unread messages |
+| `ravi inbox email` | List email threads |
+| `ravi inbox email <thread-id>` | View specific email thread with all messages |
+| `ravi inbox sms` | List SMS conversations |
+| `ravi inbox sms <conversation-id>` | View specific SMS conversation with all messages |
 
 ### Messages (flat list of individual messages)
 
 | Command | Description |
 |---------|-------------|
-| `sunday message email` | List all email messages |
-| `sunday message email <message-id>` | View specific email message by ID |
-| `sunday message email --unread` | List only unread email messages |
-| `sunday message sms` | List all SMS messages |
-| `sunday message sms <message-id>` | View specific SMS message by ID |
-| `sunday message sms --unread` | List only unread SMS messages |
+| `ravi message email` | List all email messages |
+| `ravi message email <message-id>` | View specific email message by ID |
+| `ravi message email --unread` | List only unread email messages |
+| `ravi message sms` | List all SMS messages |
+| `ravi message sms <message-id>` | View specific SMS message by ID |
+| `ravi message sms --unread` | List only unread SMS messages |
 
 ### Passwords (E2E encrypted)
 
 | Command | Description |
 |---------|-------------|
-| `sunday passwords list` | List all stored passwords |
-| `sunday passwords get <uuid>` | Show a stored password (decrypted) |
-| `sunday passwords create <domain>` | Create a new entry (auto-generates password if not provided) |
-| `sunday passwords edit <uuid>` | Edit a stored password entry |
-| `sunday passwords delete <uuid>` | Delete a stored password entry |
-| `sunday passwords generate` | Generate a random password without storing |
+| `ravi passwords list` | List all stored passwords |
+| `ravi passwords get <uuid>` | Show a stored password (decrypted) |
+| `ravi passwords create <domain>` | Create a new entry (auto-generates password if not provided) |
+| `ravi passwords edit <uuid>` | Edit a stored password entry |
+| `ravi passwords delete <uuid>` | Delete a stored password entry |
+| `ravi passwords generate` | Generate a random password without storing |
 
 **Create flags:** `--username`, `--password`, `--generate`, `--length` (default: 16), `--no-special`, `--no-digits`, `--exclude-chars`, `--notes`
 
@@ -153,13 +153,13 @@ All commands support the `--json` flag, which outputs structured JSON ideal for 
 
 ```bash
 # List all unread messages as JSON
-sunday inbox list --unread --json
+ravi inbox list --unread --json
 
 # Parse with jq to extract OTP from SMS
-sunday inbox sms --json | jq -r '.[0].messages[] | select(.body | test("[0-9]{6}")) | .body'
+ravi inbox sms --json | jq -r '.[0].messages[] | select(.body | test("[0-9]{6}")) | .body'
 
 # Get the most recent email subject
-sunday inbox email --json | jq -r '.[0].subject'
+ravi inbox email --json | jq -r '.[0].subject'
 ```
 
 ### JSON Response Structure
@@ -182,7 +182,7 @@ sunday inbox email --json | jq -r '.[0].subject'
 {
   "conversation_id": "conv_123",
   "from_number": "+1234567890",
-  "sunday_number": "+0987654321",
+  "phone_number": "+0987654321",
   "messages": [
     {
       "direction": "incoming",
@@ -195,7 +195,7 @@ sunday inbox email --json | jq -r '.[0].subject'
 
 ## Configuration
 
-Credentials are stored in `~/.sunday/config.json` with secure file permissions (0600).
+Credentials are stored in `~/.ravi/config.json` with secure file permissions (0600).
 
 The config file contains:
 - Access token (auto-refreshes when expired)
@@ -213,10 +213,10 @@ The config file contains:
 
 ```bash
 # Build with API URL (required)
-make build API_URL=https://api.sunday.example.com
+make build API_URL=https://ravi.app
 
 # Build for all platforms
-make build-all API_URL=https://api.sunday.example.com
+make build-all API_URL=https://ravi.app
 
 # Run tests
 make test
@@ -231,8 +231,8 @@ make lint
 ### Project Structure
 
 ```
-sunday-cli/
-├── cmd/sunday/         # Main entry point
+cli/
+├── cmd/ravi/          # Main entry point
 ├── internal/
 │   ├── api/           # HTTP client and API types
 │   ├── auth/          # OAuth device flow

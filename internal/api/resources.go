@@ -6,10 +6,10 @@ import (
 	"net/url"
 )
 
-// GetPhone fetches the user's assigned Sunday phone number.
+// GetPhone fetches the user's assigned Ravi phone number.
 // Returns the first phone number associated with the authenticated user.
-func (c *Client) GetPhone() (*SundayPhone, error) {
-	var result []SundayPhone
+func (c *Client) GetPhone() (*Phone, error) {
+	var result []Phone
 	if err := c.doAuthenticatedRequest(http.MethodGet, PathPhone, nil, &result); err != nil {
 		return nil, err
 	}
@@ -21,10 +21,10 @@ func (c *Client) GetPhone() (*SundayPhone, error) {
 	return &result[0], nil
 }
 
-// GetEmail fetches the user's assigned Sunday email address.
+// GetEmail fetches the user's assigned Ravi email address.
 // Returns the first email address associated with the authenticated user.
-func (c *Client) GetEmail() (*SundayEmail, error) {
-	var result []SundayEmail
+func (c *Client) GetEmail() (*Email, error) {
+	var result []Email
 	if err := c.doAuthenticatedRequest(http.MethodGet, PathEmail, nil, &result); err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (c *Client) GetOwner() (*Owner, error) {
 }
 
 // ListSMSMessages fetches all SMS messages (flat list, not grouped by conversation).
-func (c *Client) ListSMSMessages(unreadOnly bool) ([]SundayPhoneMessage, error) {
+func (c *Client) ListSMSMessages(unreadOnly bool) ([]PhoneMessage, error) {
 	params := url.Values{}
 	if unreadOnly {
 		params.Set("is_read", "false")
@@ -58,7 +58,7 @@ func (c *Client) ListSMSMessages(unreadOnly bool) ([]SundayPhoneMessage, error) 
 		path += "?" + params.Encode()
 	}
 
-	var result []SundayPhoneMessage
+	var result []PhoneMessage
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
 	}
@@ -67,10 +67,10 @@ func (c *Client) ListSMSMessages(unreadOnly bool) ([]SundayPhoneMessage, error) 
 }
 
 // GetSMSMessage fetches a specific SMS message by ID.
-func (c *Client) GetSMSMessage(messageID string) (*SundayPhoneMessage, error) {
+func (c *Client) GetSMSMessage(messageID string) (*PhoneMessage, error) {
 	path := PathMessages + messageID + "/"
 
-	var result SundayPhoneMessage
+	var result PhoneMessage
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *Client) GetSMSMessage(messageID string) (*SundayPhoneMessage, error) {
 }
 
 // ListEmailMessages fetches all email messages (flat list, not grouped by thread).
-func (c *Client) ListEmailMessages(unreadOnly bool) ([]SundayEmailMessage, error) {
+func (c *Client) ListEmailMessages(unreadOnly bool) ([]EmailMessageDetail, error) {
 	params := url.Values{}
 	if unreadOnly {
 		params.Set("is_read", "false")
@@ -90,7 +90,7 @@ func (c *Client) ListEmailMessages(unreadOnly bool) ([]SundayEmailMessage, error
 		path += "?" + params.Encode()
 	}
 
-	var result []SundayEmailMessage
+	var result []EmailMessageDetail
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
 	}
@@ -99,10 +99,10 @@ func (c *Client) ListEmailMessages(unreadOnly bool) ([]SundayEmailMessage, error
 }
 
 // GetEmailMessage fetches a specific email message by ID.
-func (c *Client) GetEmailMessage(messageID string) (*SundayEmailMessage, error) {
+func (c *Client) GetEmailMessage(messageID string) (*EmailMessageDetail, error) {
 	path := PathEmailMessages + messageID + "/"
 
-	var result SundayEmailMessage
+	var result EmailMessageDetail
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
 	}

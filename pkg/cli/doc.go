@@ -1,4 +1,4 @@
-// Package cli defines the Cobra command structure for the Sunday CLI.
+// Package cli defines the Cobra command structure for the Ravi CLI.
 //
 // Commands are organized hierarchically:
 //   - root: Base command with global flags (--json)

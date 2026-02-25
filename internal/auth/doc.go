@@ -1,5 +1,5 @@
 // Package auth implements the OAuth 2.0 Device Authorization Grant flow
-// for authenticating users with the Sunday backend.
+// for authenticating users with the Ravi backend.
 //
 // The device flow allows CLI applications to authenticate users by:
 //  1. Requesting a device code from the server

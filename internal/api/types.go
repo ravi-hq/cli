@@ -67,7 +67,7 @@ type EmailThread struct {
 	Subject         string    `json:"subject"`
 	Preview         string    `json:"preview"`
 	FromEmail       string    `json:"from_email"`
-	SundayEmail     string    `json:"sunday_email"`
+	Email           string    `json:"inbox"`
 	MessageCount    int       `json:"message_count"`
 	UnreadCount     int       `json:"unread_count"`
 	LatestMessageDt time.Time `json:"latest_message_dt"`
@@ -99,16 +99,16 @@ type EmailMessage struct {
 }
 
 // SMSConversation represents an SMS conversation summary from the /api/sms-inbox/ endpoint.
-// It groups messages between a Sunday phone number and an external number.
+// It groups messages between a Ravi phone number and an external number.
 type SMSConversation struct {
-	ConversationID    string    `json:"conversation_id"`
-	FromNumber        string    `json:"from_number"`
-	SundayPhone       string    `json:"sunday_phone"`
-	SundayPhoneNumber string    `json:"sunday_phone_number"`
-	Preview           string    `json:"preview"`
-	MessageCount      int       `json:"message_count"`
-	UnreadCount       int       `json:"unread_count"`
-	LatestMessageDt   time.Time `json:"latest_message_dt"`
+	ConversationID  string    `json:"conversation_id"`
+	FromNumber      string    `json:"from_number"`
+	Phone           string    `json:"phone"`
+	PhoneNumber     string    `json:"phone_number"`
+	Preview         string    `json:"preview"`
+	MessageCount    int       `json:"message_count"`
+	UnreadCount     int       `json:"unread_count"`
+	LatestMessageDt time.Time `json:"latest_message_dt"`
 }
 
 // SMSConversationDetail represents a complete SMS conversation with all its messages,
@@ -116,7 +116,7 @@ type SMSConversation struct {
 type SMSConversationDetail struct {
 	ConversationID string       `json:"conversation_id"`
 	FromNumber     string       `json:"from_number"`
-	SundayPhone    string       `json:"sunday_phone"`
+	Phone          string       `json:"phone"`
 	MessageCount   int          `json:"message_count"`
 	Messages       []SMSMessage `json:"messages"`
 }
@@ -151,37 +151,37 @@ type EncryptionMeta struct {
 	ManagedMasterKey string `json:"managed_master_key"`
 }
 
-// SundayPhone represents the user's assigned Sunday phone number.
-type SundayPhone struct {
+// Phone represents the user's assigned Ravi phone number.
+type Phone struct {
 	ID          int       `json:"id"`
 	PhoneNumber string    `json:"phone_number"`
 	Provider    string    `json:"provider"`
 	CreatedDt   time.Time `json:"created_dt"`
 }
 
-// SundayEmail represents the user's assigned Sunday email address.
-type SundayEmail struct {
+// Email represents the user's assigned Ravi email address.
+type Email struct {
 	ID        int       `json:"id"`
 	Email     string    `json:"email"`
 	CreatedDt time.Time `json:"created_dt"`
 }
 
-// SundayPhoneMessage represents an individual SMS message.
-type SundayPhoneMessage struct {
-	ID          int       `json:"id"`
-	URL         string    `json:"url"`
-	FromNumber  string    `json:"from_number"`
-	ToNumber    string    `json:"to_number"`
-	Body        string    `json:"body"`
-	MessageSID  string    `json:"message_sid"`
-	SundayPhone string    `json:"sunday_phone"`
-	Direction   string    `json:"direction"`
-	IsRead      bool      `json:"is_read"`
-	CreatedDt   time.Time `json:"created_dt"`
+// PhoneMessage represents an individual SMS message.
+type PhoneMessage struct {
+	ID         int       `json:"id"`
+	URL        string    `json:"url"`
+	FromNumber string    `json:"from_number"`
+	ToNumber   string    `json:"to_number"`
+	Body       string    `json:"body"`
+	MessageSID string    `json:"message_sid"`
+	Phone      string    `json:"phone"`
+	Direction  string    `json:"direction"`
+	IsRead     bool      `json:"is_read"`
+	CreatedDt  time.Time `json:"created_dt"`
 }
 
-// SundayEmailMessage represents an individual email message.
-type SundayEmailMessage struct {
+// EmailMessageDetail represents an individual email message (standalone, from /api/email-messages/).
+type EmailMessageDetail struct {
 	ID          int       `json:"id"`
 	URL         string    `json:"url"`
 	FromEmail   string    `json:"from_email"`
@@ -228,12 +228,12 @@ type PasswordGenOpts struct {
 
 // Identity represents a user's named identity grouping (email + phone).
 type Identity struct {
-	UUID        string `json:"uuid"`
-	Name        string `json:"name"`
-	SundayEmail string `json:"sunday_email"`
-	SundayPhone string `json:"sunday_phone"`
-	CreatedDt   string `json:"created_dt"`
-	UpdatedDt   string `json:"updated_dt"`
+	UUID      string `json:"uuid"`
+	Name      string `json:"name"`
+	Email     string `json:"inbox"`
+	Phone     string `json:"phone"`
+	CreatedDt string `json:"created_dt"`
+	UpdatedDt string `json:"updated_dt"`
 }
 
 // BindIdentityRequest is the request body for binding an identity to a JWT session.

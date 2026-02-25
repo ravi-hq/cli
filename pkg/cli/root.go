@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/ravi-technologies/sunday-cli/internal/output"
-	"github.com/ravi-technologies/sunday-cli/internal/version"
+	"github.com/ravi-hq/cli/internal/output"
+	"github.com/ravi-hq/cli/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -12,9 +12,9 @@ var (
 
 // rootCmd is the base command
 var rootCmd = &cobra.Command{
-	Use:   "sunday",
-	Short: "Sunday CLI - Access your inbox programmatically",
-	Long: `Sunday CLI provides command-line access to your Sunday inbox,
+	Use:   "ravi",
+	Short: "Ravi CLI - Access your inbox programmatically",
+	Long: `Ravi CLI provides command-line access to your Ravi inbox,
 including emails and SMS messages. Designed for AI agents and automation.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		output.SetJSON(jsonOutput)

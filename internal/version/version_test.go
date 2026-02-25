@@ -114,12 +114,12 @@ func TestInfo_Complete(t *testing.T) {
 	if !strings.Contains(got, "2024-01-15T10:30:00Z") {
 		t.Errorf("Info() should contain build date '2024-01-15T10:30:00Z', got: %v", got)
 	}
-	if !strings.Contains(got, "sunday version") {
-		t.Errorf("Info() should contain 'sunday version' prefix, got: %v", got)
+	if !strings.Contains(got, "ravi version") {
+		t.Errorf("Info() should contain 'ravi version' prefix, got: %v", got)
 	}
 
 	// Verify the exact format
-	want := "sunday version 2.0.0 (commit: abc1234, built: 2024-01-15T10:30:00Z)"
+	want := "ravi version 2.0.0 (commit: abc1234, built: 2024-01-15T10:30:00Z)"
 	if got != want {
 		t.Errorf("Info() = %v, want %v", got, want)
 	}

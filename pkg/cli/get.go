@@ -1,21 +1,21 @@
 package cli
 
 import (
-	"github.com/ravi-technologies/sunday-cli/internal/api"
-	"github.com/ravi-technologies/sunday-cli/internal/output"
+	"github.com/ravi-hq/cli/internal/api"
+	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
 var getCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get assigned resources",
-	Long:  "Get your assigned Sunday phone number or email address.",
+	Long:  "Get your assigned Ravi phone number or email address.",
 }
 
 var getPhoneCmd = &cobra.Command{
 	Use:   "phone",
 	Short: "Get your assigned phone number",
-	Long:  "Get the Sunday phone number assigned to your account.",
+	Long:  "Get the Ravi phone number assigned to your account.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := api.NewClient(nil)
 		if err != nil {
@@ -35,7 +35,7 @@ var getPhoneCmd = &cobra.Command{
 var getOwnerCmd = &cobra.Command{
 	Use:   "owner",
 	Short: "Get account owner's name",
-	Long:  "Get the name of the account owner (the human who owns this Sunday account).",
+	Long:  "Get the name of the account owner (the human who owns this Ravi account).",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := api.NewClient(nil)
 		if err != nil {
@@ -55,7 +55,7 @@ var getOwnerCmd = &cobra.Command{
 var getEmailCmd = &cobra.Command{
 	Use:   "email",
 	Short: "Get your assigned email address",
-	Long:  "Get the Sunday email address assigned to your account.",
+	Long:  "Get the Ravi email address assigned to your account.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := api.NewClient(nil)
 		if err != nil {

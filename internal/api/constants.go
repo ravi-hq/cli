@@ -20,7 +20,7 @@ const (
 	PathMessages      = "/api/messages/"
 	PathEmailMessages = "/api/email-messages/"
 	PathEncryption    = "/api/encryption/"
-	PathOwner         = "/api/me/"
+	PathOwner         = "/api/master/"
 	PathVault         = "/api/vault/"
 	PathIdentities    = "/api/identities/"
 	PathBindIdentity  = "/api/auth/bind-identity/"

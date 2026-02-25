@@ -22,7 +22,7 @@ type KeyPair struct {
 const EncryptedPrefix = "e2e::"
 
 // verifyPlaintext is the literal string encrypted inside the verifier.
-const verifyPlaintext = "sunday-e2e-verify"
+const verifyPlaintext = "ravi-e2e-verify"
 
 // Argon2id parameters -- must match libsodium's crypto_pwhash exactly.
 // libsodium hardcodes parallelism=1 internally; the caller only controls
@@ -106,7 +106,7 @@ func IsEncrypted(value string) bool {
 }
 
 // Verify checks that a keypair can decrypt the server-stored verifier.
-// verifierB64 is the base64-encoded SealedBox ciphertext of "sunday-e2e-verify".
+// verifierB64 is the base64-encoded SealedBox ciphertext of "ravi-e2e-verify".
 func Verify(kp *KeyPair, verifierB64 string) bool {
 	ciphertext, err := base64.StdEncoding.DecodeString(verifierB64)
 	if err != nil {
@@ -120,7 +120,7 @@ func Verify(kp *KeyPair, verifierB64 string) bool {
 	return string(plaintext) == verifyPlaintext
 }
 
-// CreateVerifier encrypts the literal "sunday-e2e-verify" with the public key
+// CreateVerifier encrypts the literal "ravi-e2e-verify" with the public key
 // and returns the base64-encoded ciphertext.
 func CreateVerifier(kp *KeyPair) (string, error) {
 	ciphertext, err := box.SealAnonymous(nil, []byte(verifyPlaintext), &kp.PublicKey, rand.Reader)

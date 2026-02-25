@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ravi-technologies/sunday-cli/internal/config"
-	"github.com/ravi-technologies/sunday-cli/internal/version"
+	"github.com/ravi-hq/cli/internal/config"
+	"github.com/ravi-hq/cli/internal/version"
 )
 
 // withTempHome is a test helper that temporarily changes the HOME environment variable
@@ -1097,7 +1097,7 @@ func TestNewClient_NilConfig_NoConfigFile(t *testing.T) {
 	defer cleanupHome()
 
 	// Ensure no config file exists
-	configPath := filepath.Join(tmpDir, ".sunday", "config.json")
+	configPath := filepath.Join(tmpDir, ".ravi", "config.json")
 	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
 		t.Fatalf("Config file should not exist in fresh temp dir")
 	}

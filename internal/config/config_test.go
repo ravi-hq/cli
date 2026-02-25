@@ -38,19 +38,19 @@ func withTempHome(t *testing.T) (tmpDir string, cleanup func()) {
 	return tmpDir, cleanup
 }
 
-// TestPath verifies that Path returns a path ending with ~/.sunday/config.json
+// TestPath verifies that Path returns a path ending with ~/.ravi/config.json
 func TestPath(t *testing.T) {
 	path := Path()
 
-	// Should end with .sunday/config.json
+	// Should end with .ravi/config.json
 	if filepath.Base(path) != "config.json" {
 		t.Errorf("Path() = %v, want ending with config.json", path)
 	}
 
-	// Should contain .sunday directory
+	// Should contain .ravi directory
 	dir := filepath.Dir(path)
-	if filepath.Base(dir) != ".sunday" {
-		t.Errorf("Path() dir = %v, want ending with .sunday", dir)
+	if filepath.Base(dir) != ".ravi" {
+		t.Errorf("Path() dir = %v, want ending with .ravi", dir)
 	}
 
 	// Path should be absolute (starts with / on Unix or drive letter on Windows)
@@ -67,9 +67,9 @@ func TestPath(t *testing.T) {
 // Note: This is difficult to test directly since os.UserHomeDir() typically works.
 // We test the expected fallback path structure instead.
 func TestPath_NoHomeDir(t *testing.T) {
-	// The fallback path would be "./.sunday/config.json"
+	// The fallback path would be "./.ravi/config.json"
 	// We verify this by checking the implementation's fallback behavior
-	fallbackPath := filepath.Join(".", ".sunday", "config.json")
+	fallbackPath := filepath.Join(".", ".ravi", "config.json")
 
 	// Verify the fallback path structure is correct
 	if filepath.Base(fallbackPath) != "config.json" {
@@ -77,8 +77,8 @@ func TestPath_NoHomeDir(t *testing.T) {
 	}
 
 	dir := filepath.Dir(fallbackPath)
-	if filepath.Base(dir) != ".sunday" {
-		t.Errorf("Fallback path dir = %v, want .sunday", filepath.Base(dir))
+	if filepath.Base(dir) != ".ravi" {
+		t.Errorf("Fallback path dir = %v, want .ravi", filepath.Base(dir))
 	}
 
 	// Note: To fully test this, we would need to mock os.UserHomeDir,
@@ -122,10 +122,10 @@ func TestLoad_ValidFile(t *testing.T) {
 	defer cleanup()
 
 	// Create the config file
-	sundayDir := filepath.Join(tmpDir, ".sunday")
-	configPath := filepath.Join(sundayDir, "config.json")
+	raviDir := filepath.Join(tmpDir, ".ravi")
+	configPath := filepath.Join(raviDir, "config.json")
 
-	if err := os.MkdirAll(sundayDir, 0700); err != nil {
+	if err := os.MkdirAll(raviDir, 0700); err != nil {
 		t.Fatalf("Failed to create directory: %v", err)
 	}
 
@@ -197,10 +197,10 @@ func TestLoad_CorruptFile(t *testing.T) {
 			defer cleanup()
 
 			// Create corrupt config file
-			sundayDir := filepath.Join(tmpDir, ".sunday")
-			configPath := filepath.Join(sundayDir, "config.json")
+			raviDir := filepath.Join(tmpDir, ".ravi")
+			configPath := filepath.Join(raviDir, "config.json")
 
-			if err := os.MkdirAll(sundayDir, 0700); err != nil {
+			if err := os.MkdirAll(raviDir, 0700); err != nil {
 				t.Fatalf("Failed to create directory: %v", err)
 			}
 
@@ -227,7 +227,7 @@ func TestSave_NewFile(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	configPath := filepath.Join(tmpDir, ".sunday", "config.json")
+	configPath := filepath.Join(tmpDir, ".ravi", "config.json")
 
 	// Ensure file doesn't exist
 	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
@@ -324,15 +324,15 @@ func TestSave_OverwriteExisting(t *testing.T) {
 	}
 }
 
-// TestSave_CreatesDirectory verifies that Save creates the ~/.sunday/ directory if it doesn't exist
+// TestSave_CreatesDirectory verifies that Save creates the ~/.ravi/ directory if it doesn't exist
 func TestSave_CreatesDirectory(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	sundayDir := filepath.Join(tmpDir, ".sunday")
+	raviDir := filepath.Join(tmpDir, ".ravi")
 
 	// Ensure directory doesn't exist
-	if _, err := os.Stat(sundayDir); !os.IsNotExist(err) {
+	if _, err := os.Stat(raviDir); !os.IsNotExist(err) {
 		t.Fatalf("Expected directory to not exist initially")
 	}
 
@@ -346,12 +346,12 @@ func TestSave_CreatesDirectory(t *testing.T) {
 	}
 
 	// Verify directory was created
-	info, err := os.Stat(sundayDir)
+	info, err := os.Stat(raviDir)
 	if err != nil {
 		t.Fatalf("Directory was not created: %v", err)
 	}
 	if !info.IsDir() {
-		t.Error("Expected .sunday to be a directory")
+		t.Error("Expected .ravi to be a directory")
 	}
 
 	// Verify directory permissions (0700)
@@ -367,7 +367,7 @@ func TestSave_Permissions(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	configPath := filepath.Join(tmpDir, ".sunday", "config.json")
+	configPath := filepath.Join(tmpDir, ".ravi", "config.json")
 
 	testConfig := &Config{
 		AccessToken:  "secret-token",
@@ -396,7 +396,7 @@ func TestClear_ExistingFile(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	configPath := filepath.Join(tmpDir, ".sunday", "config.json")
+	configPath := filepath.Join(tmpDir, ".ravi", "config.json")
 
 	// Create a config file
 	testConfig := &Config{AccessToken: "to-be-deleted"}
@@ -578,7 +578,7 @@ func TestConfigConstants(t *testing.T) {
 		t.Errorf("Path base = %v, want %v", filepath.Base(path), configFileName)
 	}
 
-	// Parent should be .sunday
+	// Parent should be .ravi
 	dir := filepath.Dir(path)
 	if filepath.Base(dir) != configDirName {
 		t.Errorf("Path dir = %v, want %v", filepath.Base(dir), configDirName)
@@ -600,23 +600,23 @@ func TestPath_Structure(t *testing.T) {
 	// Verify the path has the expected components
 	parts := strings.Split(path, string(filepath.Separator))
 
-	// Find the .sunday part
-	foundSunday := false
+	// Find the .ravi part
+	foundRavi := false
 	foundConfig := false
 	for i, part := range parts {
-		if part == ".sunday" {
-			foundSunday = true
-			// config.json should immediately follow .sunday
+		if part == ".ravi" {
+			foundRavi = true
+			// config.json should immediately follow .ravi
 			if i+1 < len(parts) && parts[i+1] == "config.json" {
 				foundConfig = true
 			}
 		}
 	}
 
-	if !foundSunday {
-		t.Errorf("Path() = %v, missing .sunday directory", path)
+	if !foundRavi {
+		t.Errorf("Path() = %v, missing .ravi directory", path)
 	}
 	if !foundConfig {
-		t.Errorf("Path() = %v, missing config.json after .sunday", path)
+		t.Errorf("Path() = %v, missing config.json after .ravi", path)
 	}
 }

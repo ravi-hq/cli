@@ -1,8 +1,8 @@
 package cli
 
 import (
-	"github.com/ravi-technologies/sunday-cli/internal/api"
-	"github.com/ravi-technologies/sunday-cli/internal/output"
+	"github.com/ravi-hq/cli/internal/api"
+	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
 

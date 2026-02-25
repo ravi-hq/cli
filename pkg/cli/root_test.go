@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ravi-technologies/sunday-cli/internal/output"
-	"github.com/ravi-technologies/sunday-cli/internal/version"
+	"github.com/ravi-hq/cli/internal/output"
+	"github.com/ravi-hq/cli/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -16,9 +16,9 @@ func newTestRootCmd() *cobra.Command {
 	var jsonOutput bool
 
 	cmd := &cobra.Command{
-		Use:   "sunday",
-		Short: "Sunday CLI - Access your inbox programmatically",
-		Long: `Sunday CLI provides command-line access to your Sunday inbox,
+		Use:   "ravi",
+		Short: "Ravi CLI - Access your inbox programmatically",
+		Long: `Ravi CLI provides command-line access to your Ravi inbox,
 including emails and SMS messages. Designed for AI agents and automation.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			output.SetJSON(jsonOutput)
@@ -61,8 +61,8 @@ func TestRootCmd_Help(t *testing.T) {
 
 	// Verify help text contains expected content
 	expectedStrings := []string{
-		"sunday",                // Command name
-		"Sunday CLI",            // Description
+		"ravi",                  // Command name
+		"Ravi CLI",              // Description
 		"inbox",                 // Mentioned in description
 		"--json",                // Global flag should be shown
 		"Output in JSON format", // Flag description
@@ -168,7 +168,7 @@ func TestRootCmd_Version(t *testing.T) {
 
 	// Verify version info contains expected components
 	expectedStrings := []string{
-		"sunday version",
+		"ravi version",
 		"1.0.0-test",
 		"abc123test",
 		"2024-06-15T12:00:00Z",

@@ -29,7 +29,7 @@ func TestListEmailThreads_Success(t *testing.T) {
 				Subject:         "First thread subject",
 				Preview:         "Preview of first email...",
 				FromEmail:       "alice@example.com",
-				SundayEmail:     "user@sunday.app",
+				Email:     "user@ravi.app",
 				MessageCount:    3,
 				UnreadCount:     1,
 				LatestMessageDt: time.Date(2024, 1, 15, 14, 30, 0, 0, time.UTC),
@@ -40,7 +40,7 @@ func TestListEmailThreads_Success(t *testing.T) {
 				Subject:         "Second thread subject",
 				Preview:         "Preview of second email...",
 				FromEmail:       "bob@example.com",
-				SundayEmail:     "user@sunday.app",
+				Email:     "user@ravi.app",
 				MessageCount:    1,
 				UnreadCount:     0,
 				LatestMessageDt: time.Date(2024, 1, 14, 10, 0, 0, 0, time.UTC),
@@ -101,7 +101,7 @@ func TestListEmailThreads_UnreadOnly(t *testing.T) {
 				Subject:      "Unread thread",
 				Preview:      "This thread has unread messages",
 				FromEmail:    "sender@example.com",
-				SundayEmail:  "user@sunday.app",
+				Email:  "user@ravi.app",
 				MessageCount: 2,
 				UnreadCount:  2,
 			},
@@ -147,7 +147,7 @@ func TestGetEmailThread_Success(t *testing.T) {
 				{
 					ID:          1,
 					FromEmail:   "alice@example.com",
-					ToEmail:     "user@sunday.app",
+					ToEmail:     "user@ravi.app",
 					CC:          "",
 					Subject:     "Test Thread Subject",
 					TextContent: "First message in thread",
@@ -158,7 +158,7 @@ func TestGetEmailThread_Success(t *testing.T) {
 				},
 				{
 					ID:          2,
-					FromEmail:   "user@sunday.app",
+					FromEmail:   "user@ravi.app",
 					ToEmail:     "alice@example.com",
 					CC:          "",
 					Subject:     "Re: Test Thread Subject",
@@ -248,8 +248,8 @@ func TestListSMSConversations_Success(t *testing.T) {
 			{
 				ConversationID:    "+15551234567:+15559876543",
 				FromNumber:        "+15551234567",
-				SundayPhone:       "My Phone",
-				SundayPhoneNumber: "+15559876543",
+				Phone:       "My Phone",
+				PhoneNumber: "+15559876543",
 				Preview:           "Latest message preview...",
 				MessageCount:      5,
 				UnreadCount:       2,
@@ -258,8 +258,8 @@ func TestListSMSConversations_Success(t *testing.T) {
 			{
 				ConversationID:    "+15552223333:+15559876543",
 				FromNumber:        "+15552223333",
-				SundayPhone:       "My Phone",
-				SundayPhoneNumber: "+15559876543",
+				Phone:       "My Phone",
+				PhoneNumber: "+15559876543",
 				Preview:           "Another conversation...",
 				MessageCount:      10,
 				UnreadCount:       0,
@@ -315,8 +315,8 @@ func TestListSMSConversations_UnreadOnly(t *testing.T) {
 			{
 				ConversationID:    "+15551234567:+15559876543",
 				FromNumber:        "+15551234567",
-				SundayPhone:       "My Phone",
-				SundayPhoneNumber: "+15559876543",
+				Phone:       "My Phone",
+				PhoneNumber: "+15559876543",
 				Preview:           "Unread message...",
 				MessageCount:      3,
 				UnreadCount:       1,
@@ -358,7 +358,7 @@ func TestGetSMSConversation_Success(t *testing.T) {
 		conversationDetail := SMSConversationDetail{
 			ConversationID: conversationID,
 			FromNumber:     "+15551234567",
-			SundayPhone:    "My Phone",
+			Phone:    "My Phone",
 			MessageCount:   3,
 			Messages: []SMSMessage{
 				{
@@ -532,7 +532,7 @@ func TestGetSMSConversation_URLEncoding(t *testing.T) {
 				conversationDetail := SMSConversationDetail{
 					ConversationID: tc.conversationID,
 					FromNumber:     "+15551234567",
-					SundayPhone:    "My Phone",
+					Phone:    "My Phone",
 					MessageCount:   0,
 					Messages:       []SMSMessage{},
 				}

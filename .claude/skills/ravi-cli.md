@@ -1,10 +1,10 @@
-# Sunday CLI - AI Agent Inbox Access
+# Ravi CLI - AI Agent Inbox Access
 
-This skill teaches you how to use the Sunday CLI to access your dedicated email and SMS inbox.
+This skill teaches you how to use the Ravi CLI to access your dedicated email and SMS inbox.
 
-## What is Sunday CLI?
+## What is Ravi CLI?
 
-Sunday CLI provides AI agents with their own phone number and email address. You can:
+Ravi CLI provides AI agents with their own phone number and email address. You can:
 - Receive SMS messages (including OTPs and verification codes)
 - Receive emails (including signup confirmations and verification links)
 - Use these credentials to sign up for websites and services
@@ -13,14 +13,14 @@ Sunday CLI provides AI agents with their own phone number and email address. You
 
 ## Prerequisites
 
-Before using Sunday CLI, ensure you are authenticated:
+Before using Ravi CLI, ensure you are authenticated:
 ```bash
-sunday auth status
+ravi auth status
 ```
 
 If not authenticated, run:
 ```bash
-sunday auth login
+ravi auth login
 ```
 
 ## Common Workflows
@@ -31,33 +31,33 @@ When you need to receive a verification code (e.g., after signing up for a servi
 
 ```bash
 # Check for new SMS messages
-sunday inbox sms --unread --json
+ravi inbox sms --unread --json
 
 # Check for new emails
-sunday inbox email --unread --json
+ravi inbox email --unread --json
 
 # Check unified inbox for all new messages
-sunday inbox list --unread --json
+ravi inbox list --unread --json
 ```
 
 **Extracting OTP from SMS:**
 ```bash
 # Get all unread SMS and look for 6-digit codes
-sunday inbox sms --unread --json | jq -r '.[] | .messages[] | select(.body | test("[0-9]{6}")) | .body'
+ravi inbox sms --unread --json | jq -r '.[] | .messages[] | select(.body | test("[0-9]{6}")) | .body'
 ```
 
 ### 2. Signing Up for Services
 
 When filling out a registration form that requires email/phone:
 
-1. **Get your Sunday email address:**
+1. **Get your Ravi email address:**
    ```bash
-   sunday get email --json | jq -r '.email'
+   ravi get email --json | jq -r '.email'
    ```
 
-2. **Get your Sunday phone number:**
+2. **Get your Ravi phone number:**
    ```bash
-   sunday get phone --json | jq -r '.phone_number'
+   ravi get phone --json | jq -r '.phone_number'
    ```
 
 3. **Use these credentials in the registration form**
@@ -65,7 +65,7 @@ When filling out a registration form that requires email/phone:
 4. **After submitting the form, check for verification:**
    ```bash
    # Wait a few seconds, then check for the verification message
-   sunday inbox list --unread --json
+   ravi inbox list --unread --json
    ```
 
 ### 3. Two-Factor Authentication (2FA)
@@ -74,10 +74,10 @@ When logging into a website that sends 2FA codes:
 
 ```bash
 # For SMS-based 2FA
-sunday inbox sms --unread --json
+ravi inbox sms --unread --json
 
 # For email-based 2FA
-sunday inbox email --unread --json
+ravi inbox email --unread --json
 ```
 
 ### 4. Viewing Message Details
@@ -85,19 +85,19 @@ sunday inbox email --unread --json
 **View a specific SMS conversation:**
 ```bash
 # List conversations first
-sunday inbox sms --json
+ravi inbox sms --json
 
 # Then view specific conversation
-sunday inbox sms <conversation_id> --json
+ravi inbox sms <conversation_id> --json
 ```
 
 **View a specific email thread:**
 ```bash
 # List threads first
-sunday inbox email --json
+ravi inbox email --json
 
 # Then view specific thread
-sunday inbox email <thread_id> --json
+ravi inbox email <thread_id> --json
 ```
 
 ## Command Reference
@@ -105,40 +105,40 @@ sunday inbox email <thread_id> --json
 ### Authentication Commands
 | Command | Description |
 |---------|-------------|
-| `sunday auth login` | Authenticate (opens browser) |
-| `sunday auth logout` | Clear credentials |
-| `sunday auth status` | Show auth status and account email |
-| `sunday auth status --json` | Get auth info as JSON |
+| `ravi auth login` | Authenticate (opens browser) |
+| `ravi auth logout` | Clear credentials |
+| `ravi auth status` | Show auth status and account email |
+| `ravi auth status --json` | Get auth info as JSON |
 
 ### Resource Commands
 | Command | Description |
 |---------|-------------|
-| `sunday get phone` | Get your assigned Sunday phone number |
-| `sunday get email` | Get your assigned Sunday email address |
-| `sunday get phone --json` | Get phone as JSON |
-| `sunday get email --json` | Get email as JSON |
+| `ravi get phone` | Get your assigned Ravi phone number |
+| `ravi get email` | Get your assigned Ravi email address |
+| `ravi get phone --json` | Get phone as JSON |
+| `ravi get email --json` | Get email as JSON |
 
 ### Inbox Commands (grouped by conversation/thread)
 | Command | Description |
 |---------|-------------|
-| `sunday inbox list` | List all messages (SMS + email) |
-| `sunday inbox list --unread` | Only unread messages |
-| `sunday inbox list --type sms` | Only SMS messages |
-| `sunday inbox list --type email` | Only email messages |
-| `sunday inbox sms` | List SMS conversations |
-| `sunday inbox sms <id>` | View SMS conversation |
-| `sunday inbox email` | List email threads |
-| `sunday inbox email <id>` | View email thread |
+| `ravi inbox list` | List all messages (SMS + email) |
+| `ravi inbox list --unread` | Only unread messages |
+| `ravi inbox list --type sms` | Only SMS messages |
+| `ravi inbox list --type email` | Only email messages |
+| `ravi inbox sms` | List SMS conversations |
+| `ravi inbox sms <id>` | View SMS conversation |
+| `ravi inbox email` | List email threads |
+| `ravi inbox email <id>` | View email thread |
 
 ### Message Commands (individual messages)
 | Command | Description |
 |---------|-------------|
-| `sunday message sms` | List all SMS messages (flat) |
-| `sunday message sms <id>` | View specific SMS message by ID |
-| `sunday message sms --unread` | Only unread SMS messages |
-| `sunday message email` | List all email messages (flat) |
-| `sunday message email <id>` | View specific email message by ID |
-| `sunday message email --unread` | Only unread email messages |
+| `ravi message sms` | List all SMS messages (flat) |
+| `ravi message sms <id>` | View specific SMS message by ID |
+| `ravi message sms --unread` | Only unread SMS messages |
+| `ravi message email` | List all email messages (flat) |
+| `ravi message email <id>` | View specific email message by ID |
+| `ravi message email --unread` | Only unread email messages |
 
 ### Important Flags
 - `--json` - Output as JSON (always use this for parsing)
@@ -151,26 +151,26 @@ sunday inbox email <thread_id> --json
 2. **Poll for new messages** after triggering a verification:
    ```bash
    # Wait a moment, then check
-   sleep 5 && sunday inbox list --unread --json
+   sleep 5 && ravi inbox list --unread --json
    ```
 
 3. **Use specific filters** to reduce noise:
    ```bash
    # If expecting SMS OTP, filter to SMS only
-   sunday inbox list --type sms --unread --json
+   ravi inbox list --type sms --unread --json
    ```
 
 4. **Check both SMS and email** - some services send to either:
    ```bash
-   sunday inbox list --unread --json
+   ravi inbox list --unread --json
    ```
 
 ## Example: Complete Signup Flow
 
 ```bash
-# 1. Get your Sunday email and phone
-EMAIL=$(sunday get email --json | jq -r '.email')
-PHONE=$(sunday get phone --json | jq -r '.phone_number')
+# 1. Get your Ravi email and phone
+EMAIL=$(ravi get email --json | jq -r '.email')
+PHONE=$(ravi get phone --json | jq -r '.phone_number')
 echo "Use this email for signup: $EMAIL"
 echo "Use this phone for signup: $PHONE"
 
@@ -180,13 +180,13 @@ echo "Use this phone for signup: $PHONE"
 sleep 10
 
 # 4. Check for verification
-sunday inbox list --unread --json
+ravi inbox list --unread --json
 
 # 5. Extract verification link or code from the email
-sunday inbox email <thread_id> --json | jq -r '.messages[].text_content'
+ravi inbox email <thread_id> --json | jq -r '.messages[].text_content'
 
 # Or extract OTP code from SMS
-sunday inbox sms <conversation_id> --json | jq -r '.messages[].body'
+ravi inbox sms <conversation_id> --json | jq -r '.messages[].body'
 ```
 
 ### 5. Managing Passwords
@@ -195,21 +195,21 @@ Store credentials for services you've signed up for:
 
 ```bash
 # After signing up for a service, store the credentials
-sunday passwords create example.com --username "$EMAIL" --password 'the-password-used'
+ravi passwords create example.com --username "$EMAIL" --password 'the-password-used'
 
 # Or auto-generate a password during signup
-sunday passwords create example.com
+ravi passwords create example.com
 # Outputs: Generated password: xK9#mL2...  (use this in the signup form)
 
 # Retrieve stored credentials later
-sunday passwords list --json
-sunday passwords get <uuid> --json
+ravi passwords list --json
+ravi passwords get <uuid> --json
 
 # Update a password
-sunday passwords edit <uuid> --password 'new-password'
+ravi passwords edit <uuid> --password 'new-password'
 
 # Generate a password without storing it
-sunday passwords generate --length 24 --json | jq -r '.password'
+ravi passwords generate --length 24 --json | jq -r '.password'
 ```
 
 **Note:** URL inputs are automatically cleaned to domains (e.g. `https://mail.google.com/inbox` → `google.com`). Username defaults to your identity email if not specified. Password is auto-generated if not provided.
@@ -217,12 +217,12 @@ sunday passwords generate --length 24 --json | jq -r '.password'
 ### Password Commands
 | Command | Description |
 |---------|-------------|
-| `sunday passwords list` | List all stored passwords |
-| `sunday passwords get <uuid>` | Show a stored password (decrypted) |
-| `sunday passwords create <domain>` | Create a new password entry |
-| `sunday passwords edit <uuid>` | Edit a stored password entry |
-| `sunday passwords delete <uuid>` | Delete a stored password entry |
-| `sunday passwords generate` | Generate a random password |
+| `ravi passwords list` | List all stored passwords |
+| `ravi passwords get <uuid>` | Show a stored password (decrypted) |
+| `ravi passwords create <domain>` | Create a new password entry |
+| `ravi passwords edit <uuid>` | Edit a stored password entry |
+| `ravi passwords delete <uuid>` | Delete a stored password entry |
+| `ravi passwords generate` | Generate a random password |
 
 **Create flags:** `--username`, `--password`, `--generate`, `--length` (default: 16), `--no-special`, `--no-digits`, `--exclude-chars`, `--notes`
 
@@ -230,7 +230,7 @@ sunday passwords generate --length 24 --json | jq -r '.password'
 
 **Not authenticated:**
 ```bash
-sunday auth login
+ravi auth login
 ```
 
 **No messages appearing:**
@@ -241,6 +241,6 @@ sunday auth login
 **Token expired:**
 The CLI automatically refreshes tokens. If issues persist:
 ```bash
-sunday auth logout
-sunday auth login
+ravi auth logout
+ravi auth login
 ```
