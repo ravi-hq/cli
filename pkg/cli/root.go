@@ -13,9 +13,24 @@ var (
 // rootCmd is the base command
 var rootCmd = &cobra.Command{
 	Use:   "ravi",
-	Short: "Ravi CLI - Access your inbox programmatically",
-	Long: `Ravi CLI provides command-line access to your Ravi inbox,
-including emails and SMS messages. Designed for AI agents and automation.`,
+	Short: "Ravi CLI — identity, email, phone, and credential vault for AI agents",
+	Long: `Ravi CLI — identity, email, phone, and credential vault for AI agents.
+
+Setup: ravi auth login (one-time, requires human for Google OAuth)
+After setup, agents self-service everything.
+
+Identity: .ravi/config.json in CWD > ~/.ravi/config.json > unscoped
+
+Commands:
+  auth       Authenticate (login/logout/status)
+  identity   Manage identities (list/create/use)
+  get        Retrieve resources (email/phone/owner)
+  inbox      Read messages (sms/email)
+  message    Individual message access
+  email      Send emails (compose/reply/reply-all)
+  vault      Credential vault (create/get/list/edit/delete/generate)
+
+All commands support --json for structured output.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		output.SetJSON(jsonOutput)
 	},

@@ -22,7 +22,7 @@ With a conversation_id argument, shows the full conversation.
 Conversation IDs are in the format: {phone_id}_{from_number}
 Example: 1_+15551234567`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient(nil)
+		client, err := api.NewClient()
 		if err != nil {
 			return err
 		}

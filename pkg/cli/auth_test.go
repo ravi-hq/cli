@@ -49,19 +49,19 @@ func newTestAuthStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show authentication status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load()
+			auth, err := config.LoadAuth()
 			if err != nil {
 				return err
 			}
 
 			// Check if authenticated (has both access and refresh tokens)
-			isAuthenticated := cfg.AccessToken != "" && cfg.RefreshToken != ""
+			isAuthenticated := auth.AccessToken != "" && auth.RefreshToken != ""
 
 			if isAuthenticated {
-				if cfg.UserEmail != "" {
+				if auth.UserEmail != "" {
 					result := map[string]interface{}{
 						"authenticated": true,
-						"email":         cfg.UserEmail,
+						"email":         auth.UserEmail,
 					}
 					data, _ := json.MarshalIndent(result, "", "  ")
 					cmd.Println(string(data))
@@ -91,7 +91,7 @@ func newTestAuthLogoutCmd() *cobra.Command {
 		Use:   "logout",
 		Short: "Clear stored credentials",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := config.Clear(); err != nil {
+			if err := config.ClearAll(); err != nil {
 				return err
 			}
 			cmd.Println("Logged out successfully")
@@ -107,10 +107,10 @@ func TestAuthStatus_NotAuthenticated(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	// Verify config path is now in temp directory
-	path := config.Path()
-	if !strings.HasPrefix(path, tmpDir) {
-		t.Fatalf("ConfigPath() = %v, expected prefix %v", path, tmpDir)
+	// Verify config dir is now in temp directory
+	raviDir := config.Dir()
+	if !strings.HasPrefix(raviDir, tmpDir) {
+		t.Fatalf("config.Dir() = %v, expected prefix %v", raviDir, tmpDir)
 	}
 
 	// No config file exists, so user is not authenticated
@@ -166,14 +166,14 @@ func TestAuthStatus_Authenticated(t *testing.T) {
 		t.Fatalf("Failed to create directory: %v", err)
 	}
 
-	testConfig := &config.Config{
+	testConfig := &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
 		UserEmail:    "user@example.com",
 	}
 
-	if err := config.Save(testConfig); err != nil {
+	if err := config.SaveAuth(testConfig); err != nil {
 		t.Fatalf("Failed to save config: %v", err)
 	}
 
@@ -228,25 +228,25 @@ func TestAuthLogout_ClearsConfig(t *testing.T) {
 
 	// Create a config file with credentials
 	raviDir := filepath.Join(tmpDir, ".ravi")
-	configPath := filepath.Join(raviDir, "config.json")
+	authPath := filepath.Join(raviDir, "auth.json")
 	if err := os.MkdirAll(raviDir, 0700); err != nil {
 		t.Fatalf("Failed to create directory: %v", err)
 	}
 
-	testConfig := &config.Config{
+	testConfig := &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
 		UserEmail:    "user@example.com",
 	}
 
-	if err := config.Save(testConfig); err != nil {
+	if err := config.SaveAuth(testConfig); err != nil {
 		t.Fatalf("Failed to save config: %v", err)
 	}
 
-	// Verify config file exists
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Fatal("Config file should exist before logout")
+	// Verify auth file exists
+	if _, err := os.Stat(authPath); os.IsNotExist(err) {
+		t.Fatal("Auth file should exist before logout")
 	}
 
 	cmd := newTestAuthLogoutCmd()
@@ -268,20 +268,20 @@ func TestAuthLogout_ClearsConfig(t *testing.T) {
 		t.Errorf("Expected logout success message, got:\n%s", outputStr)
 	}
 
-	// Verify config file is removed
-	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
-		t.Error("Config file should not exist after logout")
+	// Verify ravi directory is removed
+	if _, err := os.Stat(raviDir); !os.IsNotExist(err) {
+		t.Error("Ravi directory should not exist after logout")
 	}
 
-	// Verify that loading config now returns empty credentials
-	loadedConfig, err := config.Load()
+	// Verify that loading auth now returns empty credentials
+	loadedAuth, err := config.LoadAuth()
 	if err != nil {
-		t.Fatalf("Load() returned error: %v", err)
+		t.Fatalf("LoadAuth() returned error: %v", err)
 	}
-	if loadedConfig.AccessToken != "" {
-		t.Errorf("Expected empty AccessToken after logout, got %q", loadedConfig.AccessToken)
+	if loadedAuth.AccessToken != "" {
+		t.Errorf("Expected empty AccessToken after logout, got %q", loadedAuth.AccessToken)
 	}
-	if loadedConfig.RefreshToken != "" {
-		t.Errorf("Expected empty RefreshToken after logout, got %q", loadedConfig.RefreshToken)
+	if loadedAuth.RefreshToken != "" {
+		t.Errorf("Expected empty RefreshToken after logout, got %q", loadedAuth.RefreshToken)
 	}
 }

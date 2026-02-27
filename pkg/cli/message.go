@@ -23,7 +23,7 @@ var messageSMSCmd = &cobra.Command{
 Without arguments, lists all SMS messages (newest first).
 With a message ID, shows the specific message details.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient(nil)
+		client, err := api.NewClient()
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ var messageEmailCmd = &cobra.Command{
 Without arguments, lists all email messages (newest first).
 With a message ID, shows the specific message details.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient(nil)
+		client, err := api.NewClient()
 		if err != nil {
 			return err
 		}

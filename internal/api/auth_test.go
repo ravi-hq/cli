@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/ravi-hq/cli/internal/config"
-	"github.com/ravi-hq/cli/internal/version"
 )
 
 // setupTestClient creates a Client configured to use the mock server URL.
@@ -15,19 +16,11 @@ import (
 func setupTestClient(t *testing.T, serverURL string) *Client {
 	t.Helper()
 
-	// Save and restore APIBaseURL
-	originalAPIBaseURL := version.APIBaseURL
-	t.Cleanup(func() { version.APIBaseURL = originalAPIBaseURL })
-
-	version.APIBaseURL = serverURL
-
-	cfg := &config.Config{}
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
+	return &Client{
+		httpClient: &http.Client{Timeout: 5 * time.Second},
+		baseURL:    strings.TrimSuffix(serverURL, "/"),
+		auth:       &config.AuthConfig{},
 	}
-
-	return client
 }
 
 // TestRequestDeviceCode_Success verifies that RequestDeviceCode returns a valid

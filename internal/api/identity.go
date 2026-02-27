@@ -11,15 +11,13 @@ func (c *Client) ListIdentities() ([]Identity, error) {
 	return identities, nil
 }
 
-// BindIdentity exchanges an unbound token pair for one with the given
-// identity UUID baked into the JWT claims.
-func (c *Client) BindIdentity(identityUUID string) (*BindIdentityResponse, error) {
-	req := BindIdentityRequest{
-		Identity: identityUUID,
-	}
-	var resp BindIdentityResponse
-	if err := c.doAuthenticatedRequest(http.MethodPost, PathBindIdentity, req, &resp); err != nil {
+// CreateIdentity creates a new identity with the given name.
+func (c *Client) CreateIdentity(name string) (*Identity, error) {
+	req := map[string]string{"name": name}
+	var identity Identity
+	if err := c.doAuthenticatedRequest(http.MethodPost, PathIdentities, req, &identity); err != nil {
 		return nil, err
 	}
-	return &resp, nil
+	return &identity, nil
 }
+

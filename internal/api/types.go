@@ -241,17 +241,6 @@ type Identity struct {
 	UpdatedDt string `json:"updated_dt"`
 }
 
-// BindIdentityRequest is the request body for binding an identity to a JWT session.
-type BindIdentityRequest struct {
-	Identity string `json:"identity"`
-}
-
-// BindIdentityResponse contains the new token pair after binding an identity.
-type BindIdentityResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh"`
-}
-
 // Attachment represents an email attachment metadata.
 type Attachment struct {
 	UUID        string `json:"uuid"`

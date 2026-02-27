@@ -29,7 +29,7 @@ The --body flag accepts HTML content for formatting.`,
 		bcc, _ := cmd.Flags().GetString("bcc")
 		attachPaths, _ := cmd.Flags().GetStringSlice("attach")
 
-		client, err := api.NewClient(nil)
+		client, err := api.NewClient()
 		if err != nil {
 			return err
 		}
@@ -75,7 +75,7 @@ var replyCmd = &cobra.Command{
 		body, _ := cmd.Flags().GetString("body")
 		attachPaths, _ := cmd.Flags().GetStringSlice("attach")
 
-		client, err := api.NewClient(nil)
+		client, err := api.NewClient()
 		if err != nil {
 			return err
 		}
@@ -107,7 +107,7 @@ var replyAllCmd = &cobra.Command{
 		body, _ := cmd.Flags().GetString("body")
 		attachPaths, _ := cmd.Flags().GetStringSlice("attach")
 
-		client, err := api.NewClient(nil)
+		client, err := api.NewClient()
 		if err != nil {
 			return err
 		}

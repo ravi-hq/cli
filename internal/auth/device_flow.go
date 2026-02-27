@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bufio"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -31,7 +32,7 @@ type DeviceFlow struct {
 
 // NewDeviceFlow creates a new device flow handler
 func NewDeviceFlow() (*DeviceFlow, error) {
-	client, err := api.NewClient(nil)
+	client, err := api.NewClientWithTokens("", "")
 	if err != nil {
 		return nil, err
 	}
@@ -90,39 +91,37 @@ func (d *DeviceFlow) Run() error {
 		case "expired_token":
 			return fmt.Errorf("device code expired. Please try again")
 		case "":
-			// Success! Save tokens
+			// Success! Build auth config with unbound tokens.
 			d.spinner.Stop()
 
-			cfg := &config.Config{
+			auth := &config.AuthConfig{
 				AccessToken:  tokenResp.Access,
 				RefreshToken: tokenResp.Refresh,
-				ExpiresAt:    time.Now().Add(api.TokenExpiryBuffer), // Assume ~5 min expiry
+				ExpiresAt:    time.Now().Add(api.TokenExpiryBuffer),
 				UserEmail:    tokenResp.User.Email,
 			}
 
 			output.Current.PrintMessage(fmt.Sprintf("Authenticated as %s", tokenResp.User.Email))
 
-			// Recreate client with the new tokens (in memory only)
-			// so authenticated requests work before we persist.
-			d.client, err = api.NewClient(cfg)
+			// Recreate client with the new tokens (unbound, no identity).
+			d.client, err = api.NewClientWithTokens(tokenResp.Access, tokenResp.Refresh)
 			if err != nil {
 				return fmt.Errorf("failed to reinitialize client: %w", err)
 			}
 
-			// Select and bind an identity to this CLI session.
-			if err := d.selectAndBindIdentity(cfg); err != nil {
+			// Set up or unlock encryption.
+			if err := d.setupEncryption(auth); err != nil {
+				return fmt.Errorf("encryption setup failed: %w", err)
+			}
+
+			// Select an identity.
+			if err := d.selectIdentity(); err != nil {
 				return fmt.Errorf("identity selection failed: %w", err)
 			}
 
-			// Prompt for PIN to unlock E2E decryption.
-			// If the user exits here (Ctrl+C), nothing is saved to disk.
-			if err := d.unlockEncryption(cfg); err != nil {
-				return fmt.Errorf("encryption unlock failed: %w", err)
-			}
-
-			// Save only after auth + identity + PIN are all complete.
-			if err := config.Save(cfg); err != nil {
-				return fmt.Errorf("failed to save config: %w", err)
+			// Save auth.json (identity already saved to config.json above).
+			if err := config.SaveAuth(auth); err != nil {
+				return fmt.Errorf("failed to save auth: %w", err)
 			}
 
 			return nil
@@ -134,22 +133,92 @@ func (d *DeviceFlow) Run() error {
 	return fmt.Errorf("authentication timed out")
 }
 
-// unlockEncryption fetches the user's encryption metadata, prompts for their
-// PIN, verifies it, and persists the derived private key in the config file
-// so subsequent commands can decrypt without re-prompting.
-func (d *DeviceFlow) unlockEncryption(cfg *config.Config) error {
+// setupEncryption handles both first-time encryption setup and unlocking
+// existing encryption. On first setup, it generates a recovery key.
+func (d *DeviceFlow) setupEncryption(auth *config.AuthConfig) error {
 	meta, err := d.client.GetEncryptionMeta()
 	if err != nil {
 		return fmt.Errorf("fetching encryption metadata: %w", err)
 	}
 
 	if meta.PublicKey == "" {
-		// User hasn't completed PIN setup on the dashboard yet.
-		// This is OK — CLI will error on commands that need decryption.
-		fmt.Println("\nEncryption not set up yet. Complete PIN setup on the dashboard to enable E2E decryption.")
-		return nil
+		// First-time setup: prompt for PIN, generate keys, register with server.
+		return d.initialEncryptionSetup(auth)
 	}
 
+	// Existing encryption: prompt for PIN, verify, store keys.
+	return d.unlockExistingEncryption(auth, meta)
+}
+
+// initialEncryptionSetup creates encryption keys from a user-chosen PIN and
+// registers them with the server. Also generates and saves a recovery key.
+func (d *DeviceFlow) initialEncryptionSetup(auth *config.AuthConfig) error {
+	fmt.Println("\nSet up encryption for your vault.")
+	pin, err := crypto.PromptPIN("Choose a 6-digit encryption PIN: ")
+	if err != nil {
+		return err
+	}
+
+	// Confirm PIN.
+	confirm, err := crypto.PromptPIN("Confirm PIN: ")
+	if err != nil {
+		return err
+	}
+	if pin != confirm {
+		return fmt.Errorf("PINs do not match")
+	}
+
+	// Generate random salt (16 bytes).
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return fmt.Errorf("generating salt: %w", err)
+	}
+
+	// Derive keypair from PIN + salt.
+	kp, err := crypto.DeriveKeyPair(pin, salt)
+	if err != nil {
+		return fmt.Errorf("deriving keypair: %w", err)
+	}
+
+	// Create verifier (encrypted "ravi-e2e-verify" with public key).
+	verifier, err := crypto.CreateVerifier(kp)
+	if err != nil {
+		return fmt.Errorf("creating verifier: %w", err)
+	}
+
+	saltB64 := base64.StdEncoding.EncodeToString(salt)
+	pubKeyB64 := base64.StdEncoding.EncodeToString(kp.PublicKey[:])
+
+	// Save recovery key BEFORE registering with server (can be retried if it fails).
+	recoveryKey := base64.StdEncoding.EncodeToString(salt)
+	if err := config.SaveRecoveryKey(recoveryKey); err != nil {
+		return fmt.Errorf("saving recovery key: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "\nRecovery key saved to %s — back this up!\n", config.RecoveryKeyPath())
+
+	// Register with server (point of no return).
+	err = d.client.UpdateEncryptionMeta(map[string]string{
+		"salt":       saltB64,
+		"public_key": pubKeyB64,
+		"verifier":   verifier,
+	})
+	if err != nil {
+		return fmt.Errorf("registering encryption keys: %w", err)
+	}
+
+	// Store keys in auth config.
+	auth.PINSalt = saltB64
+	auth.PublicKey = pubKeyB64
+	auth.PrivateKey = base64.StdEncoding.EncodeToString(kp.PrivateKey[:])
+
+	output.Current.PrintMessage("Encryption set up successfully")
+	return nil
+}
+
+// unlockExistingEncryption prompts for the PIN and verifies it against
+// server-stored metadata.
+func (d *DeviceFlow) unlockExistingEncryption(auth *config.AuthConfig, meta *api.EncryptionMeta) error {
 	fmt.Println()
 	kp, err := crypto.GetOrPromptKeyPair(meta.Salt, meta.Verifier)
 	if err != nil {
@@ -162,24 +231,23 @@ func (d *DeviceFlow) unlockEncryption(cfg *config.Config) error {
 		return fmt.Errorf("derived public key does not match server record — possible data corruption")
 	}
 
-	cfg.PINSalt = meta.Salt
-	cfg.PublicKey = meta.PublicKey
-	cfg.PrivateKey = base64.StdEncoding.EncodeToString(kp.PrivateKey[:])
+	auth.PINSalt = meta.Salt
+	auth.PublicKey = meta.PublicKey
+	auth.PrivateKey = base64.StdEncoding.EncodeToString(kp.PrivateKey[:])
 
 	output.Current.PrintMessage("Encryption unlocked")
 	return nil
 }
 
-// selectAndBindIdentity lists the user's identities and binds the chosen one
-// to the JWT session. The identity is then locked into all future API calls.
-func (d *DeviceFlow) selectAndBindIdentity(cfg *config.Config) error {
+// selectIdentity lists identities and saves the selected one to the global config.
+func (d *DeviceFlow) selectIdentity() error {
 	identities, err := d.client.ListIdentities()
 	if err != nil {
 		return fmt.Errorf("listing identities: %w", err)
 	}
 
 	if len(identities) == 0 {
-		return fmt.Errorf("no identities found — complete setup on the dashboard first")
+		return fmt.Errorf("no identities found — encryption setup may have failed, try `ravi auth login` again")
 	}
 
 	var selected api.Identity
@@ -188,7 +256,7 @@ func (d *DeviceFlow) selectAndBindIdentity(cfg *config.Config) error {
 		selected = identities[0]
 		output.Current.PrintMessage(fmt.Sprintf("Using identity: %s", identityLabel(selected)))
 	} else {
-		fmt.Println("\nSelect an identity for this CLI session:")
+		fmt.Println("\nSelect an identity:")
 		for i, id := range identities {
 			fmt.Printf("  %d) %s\n", i+1, identityLabel(id))
 		}
@@ -210,27 +278,15 @@ func (d *DeviceFlow) selectAndBindIdentity(cfg *config.Config) error {
 		selected = identities[choice-1]
 	}
 
-	// Bind the identity to the JWT.
-	bound, err := d.client.BindIdentity(selected.UUID)
-	if err != nil {
-		return fmt.Errorf("binding identity: %w", err)
-	}
-	if bound.Access == "" || bound.Refresh == "" {
-		return fmt.Errorf("binding identity: server returned empty tokens")
-	}
-
-	cfg.AccessToken = bound.Access
-	cfg.RefreshToken = bound.Refresh
-	cfg.ExpiresAt = time.Now().Add(api.TokenExpiryBuffer)
-	cfg.IdentityName = selected.Name
-
-	// Recreate client with the bound tokens.
-	d.client, err = api.NewClient(cfg)
-	if err != nil {
-		return fmt.Errorf("reinitializing client after bind: %w", err)
+	// Save identity to global config.
+	if err := config.SaveGlobalConfig(&config.Config{
+		IdentityUUID: selected.UUID,
+		IdentityName: selected.Name,
+	}); err != nil {
+		return fmt.Errorf("saving config: %w", err)
 	}
 
-	output.Current.PrintMessage(fmt.Sprintf("Bound to identity: %s", identityLabel(selected)))
+	output.Current.PrintMessage(fmt.Sprintf("Identity set: %s", identityLabel(selected)))
 	return nil
 }
 

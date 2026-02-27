@@ -1,11 +1,9 @@
-// Package config handles persistent storage of user credentials and settings.
+// Package config handles persistent storage of authentication and identity settings.
 //
-// Configuration is stored in ~/.ravi/config.json with restricted file
-// permissions (0600) to protect sensitive token data.
+// Files are stored in ~/.ravi/ with restricted permissions (0600/0700):
+//   - auth.json: tokens and encryption keys (LoadAuth/SaveAuth)
+//   - config.json: active identity reference (LoadConfig/SaveGlobalConfig)
+//   - recovery-key.txt: encryption recovery key (SaveRecoveryKey)
 //
-// The package provides functions to:
-//   - Load: Read existing configuration from disk
-//   - Save: Write configuration to disk with proper permissions
-//   - Clear: Remove stored credentials (logout)
-//   - ConfigPath: Get the path to the configuration file
+// Identity resolution: .ravi/config.json in CWD > ~/.ravi/config.json > unscoped.
 package config

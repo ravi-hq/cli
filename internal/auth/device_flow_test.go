@@ -11,7 +11,7 @@ import (
 )
 
 // withTempHome is a test helper that temporarily changes the HOME environment variable
-// to allow testing functions that use config.Load() and config.Save().
+// to allow testing functions that use config.LoadAuth() and config.SaveAuth().
 func withTempHome(t *testing.T) (tmpDir string, cleanup func()) {
 	t.Helper()
 

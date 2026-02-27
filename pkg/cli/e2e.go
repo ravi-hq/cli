@@ -9,13 +9,13 @@ import (
 	"github.com/ravi-hq/cli/internal/crypto"
 )
 
-// ensureKeyPair loads the persisted decryption keypair from the config file.
+// ensureKeyPair loads the persisted decryption keypair from auth.json.
 // The private key is stored during login (after PIN verification) so that
 // subsequent commands never need to re-prompt for the PIN.
 func ensureKeyPair() (*crypto.KeyPair, error) {
-	cfg, err := config.Load()
+	cfg, err := config.LoadAuth()
 	if err != nil {
-		return nil, fmt.Errorf("loading config: %w", err)
+		return nil, fmt.Errorf("loading auth: %w", err)
 	}
 
 	if cfg.PrivateKey == "" || cfg.PublicKey == "" {

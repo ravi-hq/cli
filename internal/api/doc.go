@@ -9,7 +9,7 @@
 //
 // Example usage:
 //
-//	client, err := api.NewClient(nil)
+//	client, err := api.NewClient()
 //	if err != nil {
 //	    log.Fatal(err)
 //	}

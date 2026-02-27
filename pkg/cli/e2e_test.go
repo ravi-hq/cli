@@ -14,8 +14,8 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-// saveTestConfig writes a config to the temp home's ~/.ravi/config.json.
-func saveTestConfig(t *testing.T, tmpDir string, cfg *config.Config) {
+// saveTestAuth writes auth config to the temp home's ~/.ravi/auth.json.
+func saveTestAuth(t *testing.T, tmpDir string, auth *config.AuthConfig) {
 	t.Helper()
 
 	raviDir := filepath.Join(tmpDir, ".ravi")
@@ -23,14 +23,14 @@ func saveTestConfig(t *testing.T, tmpDir string, cfg *config.Config) {
 		t.Fatalf("Failed to create .ravi directory: %v", err)
 	}
 
-	data, err := json.MarshalIndent(cfg, "", "  ")
+	data, err := json.MarshalIndent(auth, "", "  ")
 	if err != nil {
-		t.Fatalf("Failed to marshal config: %v", err)
+		t.Fatalf("Failed to marshal auth config: %v", err)
 	}
 
-	configPath := filepath.Join(raviDir, "config.json")
-	if err := os.WriteFile(configPath, data, 0600); err != nil {
-		t.Fatalf("Failed to write config file: %v", err)
+	authPath := filepath.Join(raviDir, "auth.json")
+	if err := os.WriteFile(authPath, data, 0600); err != nil {
+		t.Fatalf("Failed to write auth file: %v", err)
 	}
 }
 
@@ -63,7 +63,7 @@ func TestEnsureKeyPair_ValidConfig(t *testing.T) {
 
 	originalKP, privB64, pubB64 := deriveTestKeyPair(t)
 
-	saveTestConfig(t, tmpDir, &config.Config{
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
 		PrivateKey: privB64,
 		PublicKey:  pubB64,
 	})
@@ -92,7 +92,7 @@ func TestEnsureKeyPair_MissingPrivateKey(t *testing.T) {
 
 	_, _, pubB64 := deriveTestKeyPair(t)
 
-	saveTestConfig(t, tmpDir, &config.Config{
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
 		PrivateKey: "",
 		PublicKey:  pubB64,
 	})
@@ -114,7 +114,7 @@ func TestEnsureKeyPair_MissingPublicKey(t *testing.T) {
 
 	_, privB64, _ := deriveTestKeyPair(t)
 
-	saveTestConfig(t, tmpDir, &config.Config{
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
 		PrivateKey: privB64,
 		PublicKey:  "",
 	})
@@ -134,7 +134,7 @@ func TestEnsureKeyPair_EmptyConfig(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	saveTestConfig(t, tmpDir, &config.Config{})
+	saveTestAuth(t, tmpDir, &config.AuthConfig{})
 
 	_, err := ensureKeyPair()
 	if err == nil {
@@ -151,7 +151,7 @@ func TestEnsureKeyPair_NoConfigFile(t *testing.T) {
 	_, cleanup := withTempHome(t)
 	defer cleanup()
 
-	// No config file created -- config.Load returns empty Config.
+	// No auth file created -- config.LoadAuth returns empty AuthConfig.
 	_, err := ensureKeyPair()
 	if err == nil {
 		t.Fatal("ensureKeyPair() error = nil, want error when no config file exists")
@@ -168,7 +168,7 @@ func TestEnsureKeyPair_LoggedInButNoPIN(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	saveTestConfig(t, tmpDir, &config.Config{
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
 		AccessToken: "some-valid-token",
 	})
 
@@ -192,7 +192,7 @@ func TestEnsureKeyPair_InvalidBase64PrivateKey(t *testing.T) {
 
 	_, _, pubB64 := deriveTestKeyPair(t)
 
-	saveTestConfig(t, tmpDir, &config.Config{
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
 		PrivateKey: "not-valid-base64!!!",
 		PublicKey:  pubB64,
 	})
@@ -214,7 +214,7 @@ func TestEnsureKeyPair_InvalidBase64PublicKey(t *testing.T) {
 
 	_, privB64, _ := deriveTestKeyPair(t)
 
-	saveTestConfig(t, tmpDir, &config.Config{
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
 		PrivateKey: privB64,
 		PublicKey:  "not-valid-base64!!!",
 	})
@@ -246,7 +246,7 @@ func TestEnsureKeyPair_RoundTrip(t *testing.T) {
 	}
 
 	// Persist the keys in config.
-	saveTestConfig(t, tmpDir, &config.Config{
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
 		PrivateKey: privB64,
 		PublicKey:  pubB64,
 	})
@@ -274,7 +274,7 @@ func TestEnsureKeyPair_BothKeysInvalid(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	saveTestConfig(t, tmpDir, &config.Config{
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
 		PrivateKey: "!!!bad-private!!!",
 		PublicKey:  "!!!bad-public!!!",
 	})

@@ -16,33 +16,78 @@ import (
 )
 
 type Client struct {
-	httpClient *http.Client
-	baseURL    string
-	config     *config.Config
+	httpClient   *http.Client
+	baseURL      string
+	auth         *config.AuthConfig
+	identityUUID string // X-Ravi-Identity header value (empty = unscoped)
 }
 
-// NewClient creates a new API client. If cfg is nil, attempts to load from disk.
-func NewClient(cfg *config.Config) (*Client, error) {
+// NewClient creates a scoped API client: loads auth + resolves identity UUID
+// from the config chain. Most commands should use this.
+func NewClient() (*Client, error) {
 	baseURL, err := version.GetAPIBaseURL()
 	if err != nil {
 		return nil, err
 	}
 
-	if cfg == nil {
-		cfg, err = config.Load()
-		if err != nil {
-			return nil, fmt.Errorf("failed to load config: %w", err)
-		}
+	auth, err := config.LoadAuth()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load auth: %w", err)
+	}
+
+	// Resolve identity — empty string means unscoped (no config file yet).
+	identityUUID, err := config.ResolveIdentityUUID()
+	if err != nil {
+		return nil, fmt.Errorf("resolving identity: %w", err)
+	}
+
+	return &Client{
+		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		baseURL:      strings.TrimSuffix(baseURL, "/"),
+		auth:         auth,
+		identityUUID: identityUUID,
+	}, nil
+}
+
+// NewUnscopedClient creates an API client without identity scoping.
+// Use this for account-level operations (listing identities, switching identity).
+func NewUnscopedClient() (*Client, error) {
+	baseURL, err := version.GetAPIBaseURL()
+	if err != nil {
+		return nil, err
+	}
+
+	auth, err := config.LoadAuth()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load auth: %w", err)
 	}
 
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
-		config:     cfg,
+		auth:       auth,
 	}, nil
 }
 
-// doRequest performs an HTTP request with optional authentication
+// NewClientWithTokens creates a client with explicit tokens (for login flow).
+func NewClientWithTokens(access, refresh string) (*Client, error) {
+	baseURL, err := version.GetAPIBaseURL()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{
+		httpClient: &http.Client{Timeout: 30 * time.Second},
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		auth: &config.AuthConfig{
+			AccessToken:  access,
+			RefreshToken: refresh,
+			ExpiresAt:    time.Now().Add(TokenExpiryBuffer),
+		},
+	}, nil
+}
+
+// doRequest performs an HTTP request with optional authentication.
 func (c *Client) doRequest(method, path string, body interface{}, auth bool) (*http.Response, error) {
 	fullURL := c.baseURL + path
 
@@ -63,17 +108,21 @@ func (c *Client) doRequest(method, path string, body interface{}, auth bool) (*h
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	if auth && c.config.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.config.AccessToken)
+	if auth && c.auth.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.auth.AccessToken)
+	}
+
+	if auth && c.identityUUID != "" {
+		req.Header.Set("X-Ravi-Identity", c.identityUUID)
 	}
 
 	return c.httpClient.Do(req)
 }
 
-// doAuthenticatedRequest performs a request with authentication and auto token refresh
+// doAuthenticatedRequest performs a request with authentication and auto token refresh.
 func (c *Client) doAuthenticatedRequest(method, path string, body interface{}, result interface{}) error {
-	// Check if token is expired and refresh if needed
-	if time.Now().After(c.config.ExpiresAt) && c.config.RefreshToken != "" {
+	// Check if token is expired and refresh if needed.
+	if time.Now().After(c.auth.ExpiresAt) && c.auth.RefreshToken != "" {
 		if err := c.RefreshAccessToken(); err != nil {
 			return fmt.Errorf("session expired, run `ravi auth login` to re-authenticate: %w", err)
 		}
@@ -85,8 +134,8 @@ func (c *Client) doAuthenticatedRequest(method, path string, body interface{}, r
 	}
 	defer resp.Body.Close()
 
-	// If 401, try to refresh token and retry once
-	if resp.StatusCode == http.StatusUnauthorized && c.config.RefreshToken != "" {
+	// If 401, try to refresh token and retry once.
+	if resp.StatusCode == http.StatusUnauthorized && c.auth.RefreshToken != "" {
 		if err := c.RefreshAccessToken(); err != nil {
 			return fmt.Errorf("session expired, run `ravi auth login` to re-authenticate: %w", err)
 		}
@@ -100,7 +149,7 @@ func (c *Client) doAuthenticatedRequest(method, path string, body interface{}, r
 	return c.parseResponse(resp, result)
 }
 
-// parseResponse parses the HTTP response into the result struct
+// parseResponse parses the HTTP response into the result struct.
 func (c *Client) parseResponse(resp *http.Response, result interface{}) error {
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -139,9 +188,9 @@ func (c *Client) parseResponse(resp *http.Response, result interface{}) error {
 	return nil
 }
 
-// RefreshAccessToken refreshes the access token using the refresh token
+// RefreshAccessToken refreshes the access token using the refresh token.
 func (c *Client) RefreshAccessToken() error {
-	req := RefreshRequest{Refresh: c.config.RefreshToken}
+	req := RefreshRequest{Refresh: c.auth.RefreshToken}
 
 	resp, err := c.doRequest(http.MethodPost, PathTokenRefresh, req, false)
 	if err != nil {
@@ -154,25 +203,22 @@ func (c *Client) RefreshAccessToken() error {
 		return err
 	}
 
-	c.config.AccessToken = result.Access
+	c.auth.AccessToken = result.Access
 	if result.Refresh != "" {
-		c.config.RefreshToken = result.Refresh
+		c.auth.RefreshToken = result.Refresh
 	}
-	c.config.ExpiresAt = time.Now().Add(TokenExpiryBuffer) // Assume 5 min expiry, refresh at 4
+	c.auth.ExpiresAt = time.Now().Add(TokenExpiryBuffer)
 
-	return config.Save(c.config)
+	return config.SaveAuth(c.auth)
 }
 
 // IsAuthenticated checks if the client has valid auth tokens.
-// It attempts a token refresh if the access token is expired to verify
-// the refresh token is still valid.
 func (c *Client) IsAuthenticated() bool {
-	if c.config.AccessToken == "" || c.config.RefreshToken == "" {
+	if c.auth.AccessToken == "" || c.auth.RefreshToken == "" {
 		return false
 	}
 
-	// If the access token is expired, try to refresh to verify tokens are valid
-	if time.Now().After(c.config.ExpiresAt) {
+	if time.Now().After(c.auth.ExpiresAt) {
 		if err := c.RefreshAccessToken(); err != nil {
 			return false
 		}
@@ -181,17 +227,17 @@ func (c *Client) IsAuthenticated() bool {
 	return true
 }
 
-// GetUserEmail returns the stored user email
+// GetUserEmail returns the stored user email.
 func (c *Client) GetUserEmail() string {
-	return c.config.UserEmail
+	return c.auth.UserEmail
 }
 
-// GetIdentityName returns the stored identity name (empty if unbound)
-func (c *Client) GetIdentityName() string {
-	return c.config.IdentityName
+// GetIdentityUUID returns the resolved identity UUID (empty if unscoped).
+func (c *Client) GetIdentityUUID() string {
+	return c.identityUUID
 }
 
-// BuildURL builds a full URL with query parameters
+// BuildURL builds a full URL with query parameters.
 func (c *Client) BuildURL(path string, params url.Values) string {
 	if len(params) == 0 {
 		return c.baseURL + path

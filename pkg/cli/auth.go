@@ -32,7 +32,7 @@ var logoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Clear stored credentials",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.Clear(); err != nil {
+		if err := config.ClearAll(); err != nil {
 			return fmt.Errorf("failed to clear credentials: %w", err)
 		}
 		output.Current.PrintMessage("Logged out successfully")
@@ -44,11 +44,11 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show authentication status",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient(nil)
+		client, err := api.NewUnscopedClient()
 		if err != nil {
-			// Config exists but tokens are missing/corrupt — not authenticated
 			output.Current.Print(map[string]interface{}{
 				"authenticated": false,
+				"error":         err.Error(),
 			})
 			return nil
 		}
@@ -60,13 +60,18 @@ var statusCmd = &cobra.Command{
 			if email := client.GetUserEmail(); email != "" {
 				result["email"] = email
 			}
-			if identity := client.GetIdentityName(); identity != "" {
-				result["identity"] = identity
+			cfg, err := config.LoadConfig()
+			if err != nil {
+				result["config_error"] = err.Error()
+			} else if cfg.IdentityUUID != "" {
+				result["identity"] = cfg.IdentityName
+				result["identity_uuid"] = cfg.IdentityUUID
 			}
 			output.Current.Print(result)
 		} else {
-			// Tokens exist but are invalid — clear them
-			config.Clear()
+			if err := config.ClearAll(); err != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not clear old credentials: %v\n", err)
+			}
 			output.Current.Print(map[string]interface{}{
 				"authenticated": false,
 				"message":       "Session expired. Run `ravi auth login` to re-authenticate.",

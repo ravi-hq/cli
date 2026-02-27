@@ -19,7 +19,7 @@ var emailCmd = &cobra.Command{
 Without arguments, lists all email threads.
 With a thread_id argument, shows the full thread conversation.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient(nil)
+		client, err := api.NewClient()
 		if err != nil {
 			return err
 		}

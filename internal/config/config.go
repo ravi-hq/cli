@@ -9,93 +9,138 @@ import (
 )
 
 const (
-	configDirName     = ".ravi"
-	oldConfigDirName  = ".sunday"
-	configFileName    = "config.json"
-	configDirPerm     = 0700
-	configFilePerm    = 0600
+	configDirName       = ".ravi"
+	authFileName        = "auth.json"
+	configFileName      = "config.json"
+	recoveryKeyFileName = "recovery-key.txt"
+	configDirPerm       = 0700
+	configFilePerm      = 0600
 )
 
-// Config holds the authentication state for the CLI.
-type Config struct {
+// AuthConfig holds tokens and encryption keys.
+type AuthConfig struct {
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
 	ExpiresAt    time.Time `json:"expires_at"`
 	UserEmail    string    `json:"user_email,omitempty"`
-	IdentityName string    `json:"identity_name,omitempty"`
 	PINSalt      string    `json:"pin_salt,omitempty"`
 	PublicKey    string    `json:"public_key,omitempty"`
 	PrivateKey   string    `json:"private_key,omitempty"`
 }
 
-// Path returns the path to the config file (~/.ravi/config.json).
-func Path() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		// Fall back to current directory if home dir unavailable
-		return filepath.Join(".", configDirName, configFileName)
-	}
-	return filepath.Join(homeDir, configDirName, configFileName)
+// Config holds the active identity reference.
+type Config struct {
+	IdentityUUID string `json:"identity_uuid,omitempty"`
+	IdentityName string `json:"identity_name,omitempty"`
 }
 
-// migrateFromSunday copies ~/.sunday/config.json to ~/.ravi/config.json if the
-// old directory exists and the new one does not. This provides a seamless
-// transition for users upgrading from the sunday CLI to ravi.
-func migrateFromSunday() {
+// Dir returns the global config directory (~/.ravi/).
+func Dir() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return
+		fmt.Fprintf(os.Stderr, "Warning: $HOME not set, using ./.ravi/ for config\n")
+		return filepath.Join(".", configDirName)
 	}
-
-	newDir := filepath.Join(homeDir, configDirName)
-	oldPath := filepath.Join(homeDir, oldConfigDirName, configFileName)
-
-	// Only migrate if the new config dir doesn't exist yet.
-	if _, err := os.Stat(newDir); err == nil {
-		return
-	}
-
-	// Check if the old config file exists.
-	data, err := os.ReadFile(oldPath)
-	if err != nil {
-		return
-	}
-
-	// Create new config directory and copy the file.
-	if err := os.MkdirAll(newDir, configDirPerm); err != nil {
-		return
-	}
-	os.WriteFile(filepath.Join(newDir, configFileName), data, configFilePerm)
+	return filepath.Join(homeDir, configDirName)
 }
 
-// Load reads the config from disk. Returns an empty config if the file doesn't exist.
-func Load() (*Config, error) {
-	migrateFromSunday()
+// RecoveryKeyPath returns the path to the recovery key file.
+func RecoveryKeyPath() string {
+	return filepath.Join(Dir(), recoveryKeyFileName)
+}
 
-	path := Path()
+// --- Auth ---
+
+// LoadAuth reads the auth config from ~/.ravi/auth.json.
+func LoadAuth() (*AuthConfig, error) {
+	path := filepath.Join(Dir(), authFileName)
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &Config{}, nil
+			return &AuthConfig{}, nil
 		}
-		return nil, fmt.Errorf("reading config file: %w", err)
+		return nil, fmt.Errorf("reading auth file: %w", err)
 	}
 
-	var cfg Config
+	var cfg AuthConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parsing config file: %w", err)
+		return nil, fmt.Errorf("parsing auth file: %w", err)
 	}
 
 	return &cfg, nil
 }
 
-// Save writes the config to disk, creating the directory if needed.
-func Save(cfg *Config) error {
-	path := Path()
-	dir := filepath.Dir(path)
+// SaveAuth writes the auth config to ~/.ravi/auth.json with 0600 permissions.
+func SaveAuth(cfg *AuthConfig) error {
+	dir := Dir()
+	if err := os.MkdirAll(dir, configDirPerm); err != nil {
+		return fmt.Errorf("creating config directory: %w", err)
+	}
 
-	// Create config directory with restricted permissions
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encoding auth config: %w", err)
+	}
+
+	path := filepath.Join(dir, authFileName)
+	if err := os.WriteFile(path, data, configFilePerm); err != nil {
+		return fmt.Errorf("writing auth file: %w", err)
+	}
+
+	return nil
+}
+
+// --- Config (identity selector) ---
+
+// LoadConfig resolves the active identity config. Resolution order:
+// 1. .ravi/config.json in CWD (project-level override)
+// 2. ~/.ravi/config.json (global default)
+// 3. Falls back to empty Config (unscoped)
+func LoadConfig() (*Config, error) {
+	// Try CWD first.
+	if cwd, err := os.Getwd(); err == nil {
+		localPath := filepath.Join(cwd, configDirName, configFileName)
+		cfg, err := loadConfigFile(localPath)
+		if err == nil {
+			return cfg, nil
+		}
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("reading project config %s: %w", localPath, err)
+		}
+	}
+
+	// Try global config.
+	globalPath := filepath.Join(Dir(), configFileName)
+	cfg, err := loadConfigFile(globalPath)
+	if err == nil {
+		return cfg, nil
+	}
+	if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("reading global config %s: %w", globalPath, err)
+	}
+
+	// Default: unscoped.
+	return &Config{}, nil
+}
+
+func loadConfigFile(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err // Pass through raw error so caller can check os.IsNotExist
+	}
+
+	var cfg Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parsing config file %s: %w", path, err)
+	}
+
+	return &cfg, nil
+}
+
+// SaveGlobalConfig writes the global config to ~/.ravi/config.json.
+func SaveGlobalConfig(cfg *Config) error {
+	dir := Dir()
 	if err := os.MkdirAll(dir, configDirPerm); err != nil {
 		return fmt.Errorf("creating config directory: %w", err)
 	}
@@ -105,6 +150,7 @@ func Save(cfg *Config) error {
 		return fmt.Errorf("encoding config: %w", err)
 	}
 
+	path := filepath.Join(dir, configFileName)
 	if err := os.WriteFile(path, data, configFilePerm); err != nil {
 		return fmt.Errorf("writing config file: %w", err)
 	}
@@ -112,15 +158,39 @@ func Save(cfg *Config) error {
 	return nil
 }
 
-// Clear deletes the config file. Returns nil if the file doesn't exist.
-func Clear() error {
-	path := Path()
+// --- Resolution helpers ---
 
-	if err := os.Remove(path); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("removing config file: %w", err)
+// ResolveIdentityUUID resolves the active identity UUID from the config chain.
+// Returns empty string if no identity is configured (unscoped).
+func ResolveIdentityUUID() (string, error) {
+	cfg, err := LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	return cfg.IdentityUUID, nil
+}
+
+// --- Cleanup ---
+
+// ClearAll removes the entire ~/.ravi/ directory.
+func ClearAll() error {
+	dir := Dir()
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("removing config directory: %w", err)
+	}
+	return nil
+}
+
+// SaveRecoveryKey writes the recovery key to ~/.ravi/recovery-key.txt with 0600 permissions.
+func SaveRecoveryKey(key string) error {
+	dir := Dir()
+	if err := os.MkdirAll(dir, configDirPerm); err != nil {
+		return fmt.Errorf("creating config directory: %w", err)
+	}
+
+	path := RecoveryKeyPath()
+	if err := os.WriteFile(path, []byte(key+"\n"), configFilePerm); err != nil {
+		return fmt.Errorf("writing recovery key: %w", err)
 	}
 
 	return nil

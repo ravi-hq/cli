@@ -41,20 +41,11 @@ func TestGetEncryptionMeta_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	cfg := &config.Config{
+	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
-	}
-	setupTestConfig(t, cfg)
-
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
+	})
 
 	meta, err := client.GetEncryptionMeta()
 	if err != nil {
@@ -99,20 +90,11 @@ func TestGetEncryptionMeta_EmptyPublicKey(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	cfg := &config.Config{
+	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
-	}
-	setupTestConfig(t, cfg)
-
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
+	})
 
 	meta, err := client.GetEncryptionMeta()
 	if err != nil {
@@ -136,22 +118,13 @@ func TestGetEncryptionMeta_ServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	cfg := &config.Config{
+	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
-	}
-	setupTestConfig(t, cfg)
+	})
 
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
-
-	_, err = client.GetEncryptionMeta()
+	_, err := client.GetEncryptionMeta()
 	if err == nil {
 		t.Fatal("GetEncryptionMeta() error = nil, want error for 500 status")
 	}
@@ -178,20 +151,11 @@ func TestUpdateEncryptionMeta_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	cfg := &config.Config{
+	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
-	}
-	setupTestConfig(t, cfg)
-
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
+	})
 
 	data := map[string]string{
 		"salt":       "bmV3LXNhbHQ=",
@@ -199,7 +163,7 @@ func TestUpdateEncryptionMeta_Success(t *testing.T) {
 		"public_key": "bmV3LXB1YmxpYy1rZXk=",
 	}
 
-	err = client.UpdateEncryptionMeta(data)
+	err := client.UpdateEncryptionMeta(data)
 	if err != nil {
 		t.Fatalf("UpdateEncryptionMeta() error = %v, want nil", err)
 	}
@@ -218,22 +182,13 @@ func TestUpdateEncryptionMeta_ValidationError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	cfg := &config.Config{
+	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
-	}
-	setupTestConfig(t, cfg)
+	})
 
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
-
-	err = client.UpdateEncryptionMeta(map[string]string{"salt": "bad"})
+	err := client.UpdateEncryptionMeta(map[string]string{"salt": "bad"})
 	if err == nil {
 		t.Fatal("UpdateEncryptionMeta() error = nil, want error for 400 status")
 	}
@@ -254,22 +209,13 @@ func TestUpdateEncryptionMeta_ServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	cfg := &config.Config{
+	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
-	}
-	setupTestConfig(t, cfg)
+	})
 
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
-
-	err = client.UpdateEncryptionMeta(map[string]string{"salt": "value"})
+	err := client.UpdateEncryptionMeta(map[string]string{"salt": "value"})
 	if err == nil {
 		t.Fatal("UpdateEncryptionMeta() error = nil, want error for 500 status")
 	}
@@ -306,20 +252,11 @@ func TestUpdateEncryptionMeta_SendsCorrectBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	cfg := &config.Config{
+	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
-	}
-	setupTestConfig(t, cfg)
-
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
+	})
 
 	data := map[string]string{
 		"salt":       "dGVzdC1zYWx0",
@@ -327,7 +264,7 @@ func TestUpdateEncryptionMeta_SendsCorrectBody(t *testing.T) {
 		"public_key": "dGVzdC1wdWJsaWMta2V5",
 	}
 
-	err = client.UpdateEncryptionMeta(data)
+	err := client.UpdateEncryptionMeta(data)
 	if err != nil {
 		t.Fatalf("UpdateEncryptionMeta() error = %v", err)
 	}
@@ -366,22 +303,13 @@ func TestGetEncryptionMeta_AuthorizationHeader(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	cfg := &config.Config{
+	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "my-secret-token",
 		RefreshToken: "my-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
-	}
-	setupTestConfig(t, cfg)
+	})
 
-	client, err := NewClient(cfg)
-	if err != nil {
-		t.Fatalf("NewClient() error = %v", err)
-	}
-
-	_, err = client.GetEncryptionMeta()
+	_, err := client.GetEncryptionMeta()
 	if err != nil {
 		t.Fatalf("GetEncryptionMeta() error = %v", err)
 	}

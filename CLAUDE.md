@@ -7,6 +7,11 @@ handled client-side.
 ## Using Ravi CLI as an AI Agent
 
 ```bash
+# Identity management
+ravi identity list --json                # List all identities
+ravi identity create --name "X" --json   # Create a new identity
+ravi identity use <name-or-uuid>         # Switch active identity
+
 # Identity info
 ravi get email --json                    # Get assigned email address
 ravi get phone --json                    # Get assigned phone number
@@ -35,7 +40,7 @@ ravi vault generate --length 32          # Generate without storing
 ravi auth status --json                  # Check authentication
 ```
 
-**Agent workflow:** Get email/phone → sign up for service → wait → check inbox for OTP → complete verification.
+**Agent workflow:** Select identity (`ravi identity use`) → get email/phone → sign up for service → wait → check inbox for OTP → complete verification.
 
 See `.claude/skills/ravi-cli.md` for detailed usage instructions.
 
@@ -65,19 +70,29 @@ internal/
 │   ├── client.go      # NewClient, auto token refresh, authenticated requests
 │   ├── types.go       # ~250 lines of API response structs
 │   ├── constants.go   # API endpoint paths
+│   ├── identity.go    # ListIdentities, CreateIdentity API methods
 │   ├── email.go       # Compose, reply, reply-all, presign API methods
-│   ├── attachment.go   # UploadAttachment orchestrator (presign + upload)
-│   └── validation.go   # Client-side extension blocklist + size check
+│   ├── attachment.go  # UploadAttachment orchestrator (presign + upload)
+│   └── validation.go  # Client-side extension blocklist + size check
 ├── auth/              # OAuth device code flow orchestration
-├── config/            # Token/config file at ~/.ravi/config.json
+├── config/            # Auth (auth.json) + identity config (config.json)
 ├── crypto/            # E2E encryption (Argon2id + NaCl SealedBox)
 │   ├── e2e.go         # Key derivation, encrypt/decrypt
 │   └── session.go     # PIN prompting, keypair caching (per-process)
 ├── output/            # Human/JSON formatters (switched by --json flag)
 └── version/           # Build-time version info (ldflags)
-pkg/cli/               # Cobra commands (inbox, vault, auth, get, message, email send)
+pkg/cli/               # Cobra commands (identity, inbox, vault, auth, get, message, email send)
+    ├── identity.go    # identity list/create/use commands
     └── e2e.go         # Helpers: ensureKeyPair(), tryDecrypt(), encodePublicKey()
 ```
+
+### Identity Resolution
+
+Active identity is stored as `IdentityUUID` + `IdentityName` in `config.json`. Resolution order:
+
+1. `.ravi/config.json` in CWD (project-level override)
+2. `~/.ravi/config.json` (global default)
+3. Unscoped (no identity header sent)
 
 ### Key Patterns
 
@@ -87,7 +102,6 @@ pkg/cli/               # Cobra commands (inbox, vault, auth, get, message, email
 - **E2E encryption**: `internal/crypto/` handles client-side encrypt/decrypt.
   Empty strings never encrypted. `IsEncrypted()` checks `"e2e::"` prefix
 - **PIN caching**: Keypair derived once per process, cached in package-level variable. `ClearCachedKeyPair()` on logout
-- **Config migration**: `~/.sunday/config.json` auto-migrates to `~/.ravi/config.json` on first load (silent)
 
 ## Code Style
 
@@ -101,7 +115,6 @@ pkg/cli/               # Cobra commands (inbox, vault, auth, get, message, email
 | Gotcha | Details |
 |--------|---------|
 | API_URL required at build time | `make build` without `API_URL=` errors. Binary without it crashes |
-| Config auto-migration is silent | Old `~/.sunday/` migrates to `~/.ravi/` — only logs on error, easy to miss |
 | Keypair cached per-process | PIN prompted once, then cached. No re-prompt within same CLI invocation |
 | SMS conversation IDs contain `+` | Phone numbers in IDs need `url.PathEscape()` for API calls |
 | PIN prompted to stderr | Uses `term.ReadPassword()` — works even when stdout is redirected |
@@ -126,7 +139,7 @@ pkg/cli/               # Cobra commands (inbox, vault, auth, get, message, email
 | "API URL not configured" | Built without `API_URL` | Rebuild: `make build API_URL=https://ravi.app` |
 | "encryption not set up" | No keypair in config | Run `ravi auth login` and complete PIN setup |
 | 401 after token refresh | Refresh token also expired | Re-authenticate: `ravi auth login` |
-| Decryption fails | Wrong PIN or corrupted config | Delete `~/.ravi/config.json` and re-login |
+| Decryption fails | Wrong PIN or corrupted config | Delete `~/.ravi/auth.json` and re-login |
 | `golangci-lint` not found | Not installed | `brew install golangci-lint` or see golangci-lint docs |
 | Test fails with config error | Tests polluting `~/.ravi/` | Use `withTempHome(t)` helper to isolate |
 

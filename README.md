@@ -115,6 +115,14 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 | `ravi auth logout` | Clear stored credentials |
 | `ravi auth status` | Show current authentication status |
 
+### Identity
+
+| Command | Description |
+|---------|-------------|
+| `ravi identity list` | List all identities |
+| `ravi identity create --name "X"` | Create a new identity |
+| `ravi identity use <name-or-uuid>` | Set the active identity for this machine |
+
 ### Resources
 
 | Command | Description |
@@ -218,13 +226,12 @@ ravi inbox email --json | jq -r '.[0].subject'
 
 ## Configuration
 
-Credentials are stored in `~/.ravi/config.json` with secure file permissions (0600).
+Configuration is stored in `~/.ravi/` with secure file permissions (0600):
 
-The config file contains:
+- **`auth.json`** — access token (auto-refreshes), refresh token, user email, encryption keys
+- **`config.json`** — active identity (`identity_uuid`, `identity_name`)
 
-- Access token (auto-refreshes when expired)
-- Refresh token
-- User email address
+A `.ravi/config.json` in the current working directory overrides the global config, allowing per-project identity selection.
 
 ## Development
 
@@ -260,11 +267,11 @@ cli/
 ├── internal/
 │   ├── api/           # HTTP client and API types
 │   ├── auth/          # OAuth device flow
-│   ├── config/        # Credential storage
+│   ├── config/        # Auth + identity config (auth.json, config.json)
 │   ├── crypto/        # E2E encryption (Argon2id + NaCl SealedBox)
 │   ├── output/        # Human/JSON formatters
 │   └── version/       # Build-time version info
-└── pkg/cli/           # Cobra command definitions (inbox, passwords, auth)
+└── pkg/cli/           # Cobra command definitions (identity, inbox, passwords, auth)
 ```
 
 ## License
