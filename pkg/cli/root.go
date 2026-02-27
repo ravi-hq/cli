@@ -29,6 +29,7 @@ Commands:
   message    Individual message access
   email      Send emails (compose/reply/reply-all)
   vault      Credential vault (create/get/list/edit/delete/generate)
+  secrets    Key-value secrets (list/get/set/delete)
 
 All commands support --json for structured output.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {

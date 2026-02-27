@@ -9,7 +9,7 @@ import (
 // ListPasswords fetches all password entries for the authenticated user.
 func (c *Client) ListPasswords() ([]PasswordEntry, error) {
 	var result []PasswordEntry
-	if err := c.doAuthenticatedRequest(http.MethodGet, PathVault, nil, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodGet, PathPasswords, nil, &result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -17,7 +17,7 @@ func (c *Client) ListPasswords() ([]PasswordEntry, error) {
 
 // GetPassword fetches a single password entry by UUID.
 func (c *Client) GetPassword(uuid string) (*PasswordEntry, error) {
-	path := PathVault + uuid + "/"
+	path := PathPasswords + uuid + "/"
 	var result PasswordEntry
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func (c *Client) GetPassword(uuid string) (*PasswordEntry, error) {
 // CreatePassword creates a new password entry.
 func (c *Client) CreatePassword(entry PasswordEntry) (*PasswordEntry, error) {
 	var result PasswordEntry
-	if err := c.doAuthenticatedRequest(http.MethodPost, PathVault, entry, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodPost, PathPasswords, entry, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -36,7 +36,7 @@ func (c *Client) CreatePassword(entry PasswordEntry) (*PasswordEntry, error) {
 
 // UpdatePassword partially updates a password entry by UUID.
 func (c *Client) UpdatePassword(uuid string, fields map[string]interface{}) (*PasswordEntry, error) {
-	path := PathVault + uuid + "/"
+	path := PathPasswords + uuid + "/"
 	var result PasswordEntry
 	if err := c.doAuthenticatedRequest(http.MethodPatch, path, fields, &result); err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (c *Client) UpdatePassword(uuid string, fields map[string]interface{}) (*Pa
 
 // DeletePassword deletes a password entry by UUID.
 func (c *Client) DeletePassword(uuid string) error {
-	path := PathVault + uuid + "/"
+	path := PathPasswords + uuid + "/"
 	return c.doAuthenticatedRequest(http.MethodDelete, path, nil, nil)
 }
 
@@ -74,7 +74,7 @@ func (c *Client) GeneratePassword(opts PasswordGenOpts) (*GeneratedPassword, err
 		params.Set("exclude_chars", opts.ExcludeChars)
 	}
 
-	path := PathVault + "generate-password/"
+	path := PathPasswords + "generate-password/"
 	if len(params) > 0 {
 		path += "?" + params.Encode()
 	}

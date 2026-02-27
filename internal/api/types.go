@@ -214,6 +214,17 @@ type PasswordEntry struct {
 	UpdatedDt string `json:"updated_dt"`
 }
 
+// SecretEntry represents a stored key-value secret.
+type SecretEntry struct {
+	UUID      string `json:"uuid"`
+	Identity  int    `json:"identity,omitempty"`
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	Notes     string `json:"notes"`
+	CreatedDt string `json:"created_dt"`
+	UpdatedDt string `json:"updated_dt"`
+}
+
 // GeneratedPassword is the response from the password generator endpoint.
 type GeneratedPassword struct {
 	Password string `json:"password"`

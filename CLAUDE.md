@@ -36,11 +36,11 @@ ravi passwords edit <uuid> --password 'new'  # Edit fields
 ravi passwords delete <uuid>             # Delete entry
 ravi passwords generate --length 32      # Generate without storing
 
-# Vault (E2E encrypted key-value secrets)
-ravi vault set OPENAI_API_KEY "sk-..." --json   # Store a secret
-ravi vault get OPENAI_API_KEY --json             # Retrieve a secret
-ravi vault list --json                           # List all secrets
-ravi vault delete OPENAI_API_KEY --json          # Delete a secret
+# Secrets (E2E encrypted key-value secrets)
+ravi secrets set OPENAI_API_KEY "sk-..." --json   # Store a secret
+ravi secrets get OPENAI_API_KEY --json             # Retrieve a secret
+ravi secrets list --json                           # List all secrets
+ravi secrets delete <uuid> --json                  # Delete a secret
 
 # Feedback
 ravi feedback "Your feedback message" --json   # Send feedback to Ravi team
@@ -90,7 +90,7 @@ internal/
 │   └── session.go     # PIN prompting, keypair caching (per-process)
 ├── output/            # Human/JSON formatters (switched by --json flag)
 └── version/           # Build-time version info (ldflags)
-pkg/cli/               # Cobra commands (identity, inbox, vault, auth, get, message, email send)
+pkg/cli/               # Cobra commands (identity, inbox, vault, secrets, auth, get, message, email send)
     ├── identity.go    # identity list/create/use commands
     └── e2e.go         # Helpers: ensureKeyPair(), tryDecrypt(), encodePublicKey()
 ```

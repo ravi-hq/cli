@@ -10,8 +10,8 @@ import (
 
 func TestListPasswords_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != PathVault {
-			t.Errorf("Expected path %s, got %s", PathVault, r.URL.Path)
+		if r.URL.Path != PathPasswords {
+			t.Errorf("Expected path %s, got %s", PathPasswords, r.URL.Path)
 		}
 		if r.Method != http.MethodGet {
 			t.Errorf("Expected GET, got %s", r.Method)
@@ -58,7 +58,7 @@ func TestListPasswords_Empty(t *testing.T) {
 
 func TestGetPassword_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		expectedPath := PathVault + "test-uuid-123/"
+		expectedPath := PathPasswords + "test-uuid-123/"
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected path %s, got %s", expectedPath, r.URL.Path)
 		}
@@ -104,8 +104,8 @@ func TestCreatePassword_Success(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("Expected POST, got %s", r.Method)
 		}
-		if r.URL.Path != PathVault {
-			t.Errorf("Expected path %s, got %s", PathVault, r.URL.Path)
+		if r.URL.Path != PathPasswords {
+			t.Errorf("Expected path %s, got %s", PathPasswords, r.URL.Path)
 		}
 
 		var input PasswordEntry
@@ -137,7 +137,7 @@ func TestUpdatePassword_Success(t *testing.T) {
 		if r.Method != http.MethodPatch {
 			t.Errorf("Expected PATCH, got %s", r.Method)
 		}
-		expectedPath := PathVault + "update-uuid/"
+		expectedPath := PathPasswords + "update-uuid/"
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected path %s, got %s", expectedPath, r.URL.Path)
 		}
@@ -163,7 +163,7 @@ func TestDeletePassword_Success(t *testing.T) {
 		if r.Method != http.MethodDelete {
 			t.Errorf("Expected DELETE, got %s", r.Method)
 		}
-		expectedPath := PathVault + "delete-uuid/"
+		expectedPath := PathPasswords + "delete-uuid/"
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected path %s, got %s", expectedPath, r.URL.Path)
 		}
@@ -183,7 +183,7 @@ func TestGeneratePassword_DefaultOpts(t *testing.T) {
 		if r.Method != http.MethodGet {
 			t.Errorf("Expected GET, got %s", r.Method)
 		}
-		if !strings.HasPrefix(r.URL.Path, PathVault+"generate-password/") {
+		if !strings.HasPrefix(r.URL.Path, PathPasswords+"generate-password/") {
 			t.Errorf("Expected generate-password path, got %s", r.URL.Path)
 		}
 
