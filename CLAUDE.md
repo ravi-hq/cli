@@ -27,14 +27,23 @@ ravi email compose --to user@example.com --subject "Hi" --body "<p>Hello</p>" --
 ravi email reply <message_id> --subject "Re: Hi" --body "<p>Reply</p>" --json
 ravi email reply-all <message_id> --subject "Re: Hi" --body "<p>Reply all</p>" --json
 
-# Credential vault (E2E encrypted)
-ravi vault list --json                   # List all entries
-ravi vault get <uuid> --json             # Show entry (decrypted)
-ravi vault create example.com            # Create (auto-generates password)
-ravi vault create example.com --username me@email.com --password 'mypass'
-ravi vault edit <uuid> --password 'new'  # Edit fields
-ravi vault delete <uuid>                 # Delete entry
-ravi vault generate --length 32          # Generate without storing
+# Passwords (E2E encrypted website credentials)
+ravi passwords list --json               # List all entries
+ravi passwords get <uuid> --json         # Show entry (decrypted)
+ravi passwords create example.com        # Create (auto-generates password)
+ravi passwords create example.com --username me@email.com --password 'mypass'
+ravi passwords edit <uuid> --password 'new'  # Edit fields
+ravi passwords delete <uuid>             # Delete entry
+ravi passwords generate --length 32      # Generate without storing
+
+# Vault (E2E encrypted key-value secrets)
+ravi vault set OPENAI_API_KEY "sk-..." --json   # Store a secret
+ravi vault get OPENAI_API_KEY --json             # Retrieve a secret
+ravi vault list --json                           # List all secrets
+ravi vault delete OPENAI_API_KEY --json          # Delete a secret
+
+# Feedback
+ravi feedback "Your feedback message" --json   # Send feedback to Ravi team
 
 # Auth
 ravi auth status --json                  # Check authentication
