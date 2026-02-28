@@ -89,3 +89,13 @@ func (c *Client) ReplyAllEmail(messageID string, req ReplyRequest) (*EmailMessag
 	}
 	return &result, nil
 }
+
+// ForwardEmail forwards an email message to one or more recipients.
+func (c *Client) ForwardEmail(messageID string, req ForwardRequest) (*EmailMessageDetail, error) {
+	path := PathEmailMessages + url.PathEscape(messageID) + "/forward/"
+	var result EmailMessageDetail
+	if err := c.doAuthenticatedRequest(http.MethodPost, path, req, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}

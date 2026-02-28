@@ -19,7 +19,7 @@ func TestEmailSendCommandRegistered(t *testing.T) {
 				subNames[sub.Name()] = true
 			}
 
-			for _, expected := range []string{"compose", "reply", "reply-all"} {
+			for _, expected := range []string{"compose", "reply", "reply-all", "forward"} {
 				if !subNames[expected] {
 					t.Errorf("email command missing subcommand %q", expected)
 				}
@@ -48,6 +48,35 @@ func TestReplyRequiredFlags(t *testing.T) {
 	requiredFlags := []string{"subject", "body"}
 	for _, cmd := range []*cobra.Command{replyCmd, replyAllCmd} {
 		for _, name := range requiredFlags {
+			flag := cmd.Flags().Lookup(name)
+			if flag == nil {
+				t.Errorf("%s command missing flag %q", cmd.Name(), name)
+			}
+		}
+	}
+}
+
+func TestForwardRequiredFlags(t *testing.T) {
+	requiredFlags := []string{"to", "subject", "body"}
+	optionalFlags := []string{"cc", "bcc", "attach"}
+
+	for _, name := range requiredFlags {
+		flag := forwardCmd.Flags().Lookup(name)
+		if flag == nil {
+			t.Errorf("forward command missing required flag %q", name)
+		}
+	}
+	for _, name := range optionalFlags {
+		flag := forwardCmd.Flags().Lookup(name)
+		if flag == nil {
+			t.Errorf("forward command missing optional flag %q", name)
+		}
+	}
+}
+
+func TestReplyCCBCCFlags(t *testing.T) {
+	for _, cmd := range []*cobra.Command{replyCmd, replyAllCmd} {
+		for _, name := range []string{"cc", "bcc"} {
 			flag := cmd.Flags().Lookup(name)
 			if flag == nil {
 				t.Errorf("%s command missing flag %q", cmd.Name(), name)

@@ -100,6 +100,81 @@ func TestReplyAllEmail(t *testing.T) {
 	}
 }
 
+func TestReplyEmailWithCC(t *testing.T) {
+	var receivedBody ReplyRequest
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&receivedBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(EmailMessageDetail{ID: 10})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.ReplyEmail("789", ReplyRequest{
+		Content: "reply with cc",
+		Subject: "Re: Test",
+		CC:      []string{"alice@example.com", "bob@example.com"},
+		BCC:     []string{"secret@example.com"},
+	})
+	if err != nil {
+		t.Fatalf("ReplyEmail() error = %v", err)
+	}
+	if len(receivedBody.CC) != 2 {
+		t.Errorf("CC length = %d, want 2", len(receivedBody.CC))
+	}
+	if receivedBody.CC[0] != "alice@example.com" {
+		t.Errorf("CC[0] = %v, want alice@example.com", receivedBody.CC[0])
+	}
+	if len(receivedBody.BCC) != 1 {
+		t.Errorf("BCC length = %d, want 1", len(receivedBody.BCC))
+	}
+	if receivedBody.BCC[0] != "secret@example.com" {
+		t.Errorf("BCC[0] = %v, want secret@example.com", receivedBody.BCC[0])
+	}
+}
+
+func TestForwardEmail(t *testing.T) {
+	var receivedPath string
+	var receivedBody ForwardRequest
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedPath = r.URL.Path
+		json.NewDecoder(r.Body).Decode(&receivedBody)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(EmailMessageDetail{ID: 5})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	result, err := client.ForwardEmail("100", ForwardRequest{
+		ToEmail: "forward@example.com",
+		Subject: "Fwd: Test",
+		Content: "<p>FYI</p>",
+		CC:      []string{"cc@example.com"},
+	})
+	if err != nil {
+		t.Fatalf("ForwardEmail() error = %v", err)
+	}
+	if result.ID != 5 {
+		t.Errorf("result.ID = %v, want 5", result.ID)
+	}
+	if receivedPath != "/api/email-messages/100/forward/" {
+		t.Errorf("path = %v, want /api/email-messages/100/forward/", receivedPath)
+	}
+	if receivedBody.ToEmail != "forward@example.com" {
+		t.Errorf("body.ToEmail = %v, want forward@example.com", receivedBody.ToEmail)
+	}
+	if receivedBody.Subject != "Fwd: Test" {
+		t.Errorf("body.Subject = %v, want Fwd: Test", receivedBody.Subject)
+	}
+	if len(receivedBody.CC) != 1 || receivedBody.CC[0] != "cc@example.com" {
+		t.Errorf("body.CC = %v, want [cc@example.com]", receivedBody.CC)
+	}
+}
+
 func TestPresignAttachment(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != PathEmailAttachmentPresign {

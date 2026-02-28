@@ -11,8 +11,8 @@ import (
 
 var emailSendCmd = &cobra.Command{
 	Use:   "email",
-	Short: "Send emails (compose, reply, reply-all)",
-	Long:  "Compose new emails or reply to existing ones, with optional attachments.",
+	Short: "Send emails (compose, reply, reply-all, forward)",
+	Long:  "Compose new emails, reply to existing ones, or forward them, with optional attachments.",
 }
 
 var composeCmd = &cobra.Command{
@@ -73,6 +73,8 @@ var replyCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		subject, _ := cmd.Flags().GetString("subject")
 		body, _ := cmd.Flags().GetString("body")
+		cc, _ := cmd.Flags().GetString("cc")
+		bcc, _ := cmd.Flags().GetString("bcc")
 		attachPaths, _ := cmd.Flags().GetStringSlice("attach")
 
 		client, err := api.NewClient()
@@ -85,11 +87,19 @@ var replyCmd = &cobra.Command{
 			return err
 		}
 
-		result, err := client.ReplyEmail(args[0], api.ReplyRequest{
+		req := api.ReplyRequest{
 			Content:         body,
 			Subject:         subject,
 			AttachmentUUIDs: attachmentUUIDs,
-		})
+		}
+		if cc != "" {
+			req.CC = splitAndTrim(cc)
+		}
+		if bcc != "" {
+			req.BCC = splitAndTrim(bcc)
+		}
+
+		result, err := client.ReplyEmail(args[0], req)
 		if err != nil {
 			return err
 		}
@@ -105,6 +115,8 @@ var replyAllCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		subject, _ := cmd.Flags().GetString("subject")
 		body, _ := cmd.Flags().GetString("body")
+		cc, _ := cmd.Flags().GetString("cc")
+		bcc, _ := cmd.Flags().GetString("bcc")
 		attachPaths, _ := cmd.Flags().GetStringSlice("attach")
 
 		client, err := api.NewClient()
@@ -117,11 +129,63 @@ var replyAllCmd = &cobra.Command{
 			return err
 		}
 
-		result, err := client.ReplyAllEmail(args[0], api.ReplyRequest{
+		req := api.ReplyRequest{
 			Content:         body,
 			Subject:         subject,
 			AttachmentUUIDs: attachmentUUIDs,
-		})
+		}
+		if cc != "" {
+			req.CC = splitAndTrim(cc)
+		}
+		if bcc != "" {
+			req.BCC = splitAndTrim(bcc)
+		}
+
+		result, err := client.ReplyAllEmail(args[0], req)
+		if err != nil {
+			return err
+		}
+
+		return output.Current.Print(result)
+	},
+}
+
+var forwardCmd = &cobra.Command{
+	Use:   "forward <message_id>",
+	Short: "Forward an email",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		to, _ := cmd.Flags().GetString("to")
+		subject, _ := cmd.Flags().GetString("subject")
+		body, _ := cmd.Flags().GetString("body")
+		cc, _ := cmd.Flags().GetString("cc")
+		bcc, _ := cmd.Flags().GetString("bcc")
+		attachPaths, _ := cmd.Flags().GetStringSlice("attach")
+
+		client, err := api.NewClient()
+		if err != nil {
+			return err
+		}
+
+		attachmentUUIDs, err := uploadAttachments(client, attachPaths)
+		if err != nil {
+			return err
+		}
+
+		req := api.ForwardRequest{
+			ToEmail:         to,
+			Subject:         subject,
+			Content:         body,
+			AttachmentUUIDs: attachmentUUIDs,
+		}
+		if cc != "" {
+			req.CC = splitAndTrim(cc)
+		}
+		if bcc != "" {
+			req.BCC = splitAndTrim(bcc)
+		}
+
+		result, err := client.ForwardEmail(args[0], req)
 		if err != nil {
 			return err
 		}
@@ -176,13 +240,27 @@ func init() {
 	for _, cmd := range []*cobra.Command{replyCmd, replyAllCmd} {
 		cmd.Flags().String("subject", "", "Email subject (required)")
 		cmd.Flags().String("body", "", "Email body — HTML supported (required)")
+		cmd.Flags().String("cc", "", "CC recipients (comma-separated)")
+		cmd.Flags().String("bcc", "", "BCC recipients (comma-separated)")
 		cmd.Flags().StringSlice("attach", nil, "File paths to attach")
 		cmd.MarkFlagRequired("subject")
 		cmd.MarkFlagRequired("body")
 	}
 
+	// Forward flags
+	forwardCmd.Flags().String("to", "", "Recipient email address (required)")
+	forwardCmd.Flags().String("subject", "", "Email subject (required)")
+	forwardCmd.Flags().String("body", "", "Email body — HTML supported (required)")
+	forwardCmd.Flags().String("cc", "", "CC recipients (comma-separated)")
+	forwardCmd.Flags().String("bcc", "", "BCC recipients (comma-separated)")
+	forwardCmd.Flags().StringSlice("attach", nil, "File paths to attach")
+	forwardCmd.MarkFlagRequired("to")
+	forwardCmd.MarkFlagRequired("subject")
+	forwardCmd.MarkFlagRequired("body")
+
 	emailSendCmd.AddCommand(composeCmd)
 	emailSendCmd.AddCommand(replyCmd)
 	emailSendCmd.AddCommand(replyAllCmd)
+	emailSendCmd.AddCommand(forwardCmd)
 	rootCmd.AddCommand(emailSendCmd)
 }

@@ -25,7 +25,9 @@ ravi message email <message_id> --json   # Specific email by ID
 # Send emails
 ravi email compose --to user@example.com --subject "Hi" --body "<p>Hello</p>" --json
 ravi email reply <message_id> --subject "Re: Hi" --body "<p>Reply</p>" --json
+ravi email reply <message_id> --subject "Re: Hi" --body "<p>Reply</p>" --cc "a@b.com" --json  # Reply with CC
 ravi email reply-all <message_id> --subject "Re: Hi" --body "<p>Reply all</p>" --json
+ravi email forward <message_id> --to user@example.com --subject "Fwd: Hi" --body "<p>FYI</p>" --json  # Forward email
 
 # Passwords (E2E encrypted website credentials)
 ravi passwords list --json               # List all entries
@@ -80,7 +82,7 @@ internal/
 │   ├── types.go       # ~250 lines of API response structs
 │   ├── constants.go   # API endpoint paths
 │   ├── identity.go    # ListIdentities, CreateIdentity API methods
-│   ├── email.go       # Compose, reply, reply-all, presign API methods
+│   ├── email.go       # Compose, reply, reply-all, forward, presign API methods
 │   ├── attachment.go  # UploadAttachment orchestrator (presign + upload)
 │   └── validation.go  # Client-side extension blocklist + size check
 ├── auth/              # OAuth device code flow orchestration
