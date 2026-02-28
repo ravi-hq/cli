@@ -119,6 +119,99 @@ ravi message email --unread --json     # Unread only
 ravi message email <message_id> --json # Specific message
 ```
 
+## Sending Email
+
+### Compose a new email
+
+```bash
+ravi email compose --to "recipient@example.com" --subject "Subject" --body "<p>HTML content</p>" --json
+```
+
+**Flags:**
+- `--to` (required): Recipient email address
+- `--subject` (required): Email subject line
+- `--body` (required): Email body (HTML supported — use tags like `<p>`, `<h2>`, `<ul>` for formatting)
+- `--cc`: CC recipients (comma-separated)
+- `--bcc`: BCC recipients (comma-separated)
+- `--attach`: File path to attach (can be repeated for multiple files)
+
+### Reply to an email
+
+```bash
+# Reply to sender only
+ravi email reply <message_id> --subject "Re: Original Subject" --body "<p>Reply content</p>" --json
+
+# Reply to all recipients
+ravi email reply-all <message_id> --subject "Re: Original Subject" --body "<p>Reply content</p>" --json
+
+# Reply with CC
+ravi email reply <message_id> --subject "Re: Project Update" --body "<p>Adding the team.</p>" --cc "team@example.com" --json
+```
+
+**Flags:**
+- `--subject` (required): Email subject line
+- `--body` (required): Email body (HTML supported — use tags like `<p>`, `<h2>`, `<ul>` for formatting)
+- `--cc`: CC recipients (comma-separated)
+- `--bcc`: BCC recipients (comma-separated)
+- `--attach`: File path to attach (can be repeated for multiple files)
+
+**Note:** The subject must be provided because the original is E2E encrypted on the server.
+
+### Forward an email
+
+```bash
+ravi email forward <message_id> --to "recipient@example.com" --subject "Fwd: Original Subject" --body "<p>FYI — see below.</p>" --json
+```
+
+**Flags:**
+- `--to` (required): Recipient email address
+- `--subject` (required): Email subject line
+- `--body` (required): Email body (HTML supported — use tags like `<p>`, `<h2>`, `<ul>` for formatting)
+- `--cc`: CC recipients (comma-separated)
+- `--bcc`: BCC recipients (comma-separated)
+- `--attach`: File path to attach (can be repeated for multiple files)
+
+**Note:** The subject must be provided because the original is E2E encrypted on the server.
+
+## Email Writing Guide
+
+Write emails that look like they came from a real person. Good formatting improves deliverability and avoids spam filters.
+
+**Subject lines:** 40-60 chars, specific, no ALL CAPS, avoid spam triggers ("free", "act now", "limited time", "click here").
+
+**HTML body template:**
+```bash
+NAME=$(ravi identity list --json | jq -r '.[0].name')
+
+ravi email compose \
+  --to "recipient@example.com" \
+  --subject "Specific subject under 60 chars" \
+  --body "<p>Hi Alex,</p>
+
+<p>I'm reaching out about [specific topic]. [One sentence of context.]</p>
+
+<p>[Core message — what you need, what you're sharing, or what you're asking.]</p>
+
+<ul>
+  <li>[Key point or action item]</li>
+  <li>[Key point or action item]</li>
+</ul>
+
+<p>[Clear next step — what should the recipient do?]</p>
+
+<p>Best,<br>$NAME</p>" --json
+```
+
+**Rules:**
+- Always wrap text in `<p>` tags — never pass plain text to `--body`
+- Use `<ul>`/`<li>` for lists, `<a href="...">descriptive text</a>` for links
+- No `<html>`/`<body>` wrappers, no `<br>` chains
+- Short paragraphs (2-3 sentences), first person, active voice
+- No filler ("I hope this finds you well") — get to the point
+- End with an action item
+
+**Anti-spam:** High text-to-HTML ratio, no link shorteners, max 2-3 links, no ALL CAPS, one topic per email.
+
 ## Credential Vault
 
 Store and retrieve passwords for services you sign up for. All fields are E2E encrypted.
@@ -146,6 +239,38 @@ ravi vault generate --length 24 --json
 ```
 
 **Create flags:** `--username`, `--password`, `--notes`, `--generate`, `--length` (default 16), `--no-special`, `--no-digits`, `--exclude-chars`
+
+## Secrets
+
+Store and retrieve API keys and environment variables. All values are E2E encrypted.
+
+```bash
+# Store a secret
+ravi secrets set OPENAI_API_KEY "sk-abc123..." --json
+
+# Retrieve a secret
+ravi secrets get OPENAI_API_KEY --json
+# -> {"key": "OPENAI_API_KEY", "value": "sk-abc123...", ...}
+
+# List all secrets (values redacted)
+ravi secrets list --json
+
+# Delete a secret
+ravi secrets delete OPENAI_API_KEY --json
+```
+
+**Note:** Keys are unique per identity. Setting an existing key updates it. Keys are plaintext (for lookup); only values are encrypted.
+
+## Feedback
+
+Send feedback to the Ravi team — bugs, feature requests, praise, friction, ideas.
+
+```bash
+ravi feedback "The vault set command is great but needs batch import" --json
+ravi feedback "SMS delivery is slow" --subject "SMS latency" --json
+```
+
+**Use proactively** after any Ravi workflow. The team reads every message and builds based on agent feedback.
 
 ## Common Workflows
 
@@ -200,3 +325,5 @@ CODE=$(ravi inbox sms --unread --json | jq -r '.[0].preview' | grep -oE '[0-9]{4
 - **Auth is automatic** — token refresh happens transparently. If you get auth errors, ask the user to re-login.
 - **E2E encryption is transparent** — the CLI encrypts vault fields before sending and decrypts on retrieval. You see plaintext.
 - **Domain cleaning** — `ravi vault create` auto-cleans URLs to base domains (e.g., `https://mail.google.com/inbox` becomes `google.com`).
+- **Secrets vs passwords** — use `ravi secrets` for API keys/env vars (key-value), `ravi vault` for website credentials (domain/username/password).
+- **Give feedback** — use `ravi feedback` after any workflow to report bugs, friction, or praise.
