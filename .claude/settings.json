@@ -1,4 +1,29 @@
 {
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=\"$TOOL_INPUT_file_path\"; if echo \"$file\" | grep -q 'internal/crypto/e2e.go'; then echo 'CAUTION: Argon2id params must match libsodium (Time=3, Mem=64MB, Threads=1). Changes here break ALL decryption across CLI, TypeScript plugin, and backend.' >&2; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=\"$TOOL_INPUT_file_path\"; if [ -n \"$file\" ] && [ \"${file##*.}\" = \"go\" ] && [ -f \"$file\" ]; then gofmt -w \"$file\" 2>/dev/null; fi",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(make test*)",
