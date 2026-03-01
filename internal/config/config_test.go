@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 )
 
 // withTempHome temporarily changes HOME to a temp directory.
@@ -57,7 +56,6 @@ func TestSaveAuth_CreatesFile(t *testing.T) {
 	cfg := &AuthConfig{
 		AccessToken:  "test-access",
 		RefreshToken: "test-refresh",
-		ExpiresAt:    time.Now().Add(time.Hour).Truncate(time.Second),
 		UserEmail:    "test@example.com",
 		PINSalt:      "salt123",
 		PublicKey:    "pub123",
@@ -91,7 +89,6 @@ func TestSaveAuth_LoadAuth_RoundTrip(t *testing.T) {
 	original := &AuthConfig{
 		AccessToken:  "rt-access",
 		RefreshToken: "rt-refresh",
-		ExpiresAt:    time.Date(2024, 12, 25, 15, 30, 45, 0, time.UTC),
 		UserEmail:    "rt@example.com",
 		PINSalt:      "salt",
 		PublicKey:    "pub",
@@ -112,9 +109,6 @@ func TestSaveAuth_LoadAuth_RoundTrip(t *testing.T) {
 	}
 	if loaded.RefreshToken != original.RefreshToken {
 		t.Errorf("RefreshToken = %v, want %v", loaded.RefreshToken, original.RefreshToken)
-	}
-	if !loaded.ExpiresAt.Equal(original.ExpiresAt) {
-		t.Errorf("ExpiresAt = %v, want %v", loaded.ExpiresAt, original.ExpiresAt)
 	}
 	if loaded.UserEmail != original.UserEmail {
 		t.Errorf("UserEmail = %v, want %v", loaded.UserEmail, original.UserEmail)

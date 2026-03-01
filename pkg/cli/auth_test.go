@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ravi-hq/cli/internal/config"
 	"github.com/ravi-hq/cli/internal/output"
@@ -169,7 +168,6 @@ func TestAuthStatus_Authenticated(t *testing.T) {
 	testConfig := &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 		UserEmail:    "user@example.com",
 	}
 
@@ -236,7 +234,6 @@ func TestAuthLogout_ClearsConfig(t *testing.T) {
 	testConfig := &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 		UserEmail:    "user@example.com",
 	}
 

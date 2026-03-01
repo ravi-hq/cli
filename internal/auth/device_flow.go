@@ -97,7 +97,6 @@ func (d *DeviceFlow) Run() error {
 			auth := &config.AuthConfig{
 				AccessToken:  tokenResp.Access,
 				RefreshToken: tokenResp.Refresh,
-				ExpiresAt:    time.Now().Add(api.TokenExpiryBuffer),
 				UserEmail:    tokenResp.User.Email,
 			}
 

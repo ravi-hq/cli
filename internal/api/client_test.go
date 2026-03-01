@@ -98,7 +98,6 @@ func TestNewClient_Success(t *testing.T) {
 	auth := &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 		UserEmail:    "test@example.com",
 	}
 	setupTestAuth(t, auth)
@@ -144,7 +143,6 @@ func TestNewClient_LoadsFromDisk(t *testing.T) {
 	diskAuth := &config.AuthConfig{
 		AccessToken:  "disk-access-token",
 		RefreshToken: "disk-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 		UserEmail:    "disk@example.com",
 	}
 	setupTestAuth(t, diskAuth)
@@ -444,7 +442,6 @@ func TestRefreshAccessToken_Success(t *testing.T) {
 	auth := &config.AuthConfig{
 		AccessToken:  "old-access-token",
 		RefreshToken: "original-refresh-token",
-		ExpiresAt:    time.Now().Add(-time.Hour), // Expired
 	}
 	setupTestAuth(t, auth)
 
@@ -529,67 +526,6 @@ func TestRefreshAccessToken_Failure(t *testing.T) {
 	}
 }
 
-// TestDoAuthenticatedRequest_AutoRefresh verifies pre-emptive refresh when token is expired.
-func TestDoAuthenticatedRequest_AutoRefresh(t *testing.T) {
-	_, cleanupHome := withTempHome(t)
-	defer cleanupHome()
-
-	refreshCalled := false
-	newAccessToken := "refreshed-access-token"
-	var lastAuthHeader string
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PathTokenRefresh:
-			refreshCalled = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(RefreshResponse{
-				Access: newAccessToken,
-			})
-		case "/api/protected":
-			lastAuthHeader = r.Header.Get("Authorization")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-		default:
-			t.Errorf("Unexpected request path: %s", r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	// Create client with expired token
-	auth := &config.AuthConfig{
-		AccessToken:  "expired-access-token",
-		RefreshToken: "valid-refresh-token",
-		ExpiresAt:    time.Now().Add(-time.Hour), // Already expired
-	}
-	setupTestAuth(t, auth)
-
-	client := clientFromAuth(server.URL, auth)
-
-	var result map[string]string
-	err := client.doAuthenticatedRequest(http.MethodGet, "/api/protected", nil, &result)
-	if err != nil {
-		t.Fatalf("doAuthenticatedRequest() error = %v", err)
-	}
-
-	// Verify refresh was called
-	if !refreshCalled {
-		t.Error("Expected RefreshAccessToken to be called for expired token")
-	}
-
-	// Verify the new token was used in the request
-	expectedAuth := "Bearer " + newAccessToken
-	if lastAuthHeader != expectedAuth {
-		t.Errorf("Authorization header = %v, want %v", lastAuthHeader, expectedAuth)
-	}
-}
-
 // TestDoAuthenticatedRequest_401Retry verifies retry on 401 status.
 func TestDoAuthenticatedRequest_401Retry(t *testing.T) {
 	_, cleanupHome := withTempHome(t)
@@ -639,11 +575,10 @@ func TestDoAuthenticatedRequest_401Retry(t *testing.T) {
 	cleanupURL := withAPIBaseURL(t, server.URL)
 	defer cleanupURL()
 
-	// Create client with non-expired token (so pre-emptive refresh doesn't trigger)
+	// Create client with tokens
 	auth := &config.AuthConfig{
 		AccessToken:  "original-access-token",
 		RefreshToken: "valid-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour), // Not expired
 	}
 	setupTestAuth(t, auth)
 
@@ -921,7 +856,6 @@ func TestDoAuthenticatedRequest_NoRefreshToken(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "expired-token",
 		RefreshToken: "", // No refresh token
-		ExpiresAt:    time.Now().Add(-time.Hour),
 	})
 
 	var result map[string]interface{}

@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ravi-hq/cli/internal/config"
 )
@@ -44,7 +43,6 @@ func TestGetEncryptionMeta_Success(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	meta, err := client.GetEncryptionMeta()
@@ -93,7 +91,6 @@ func TestGetEncryptionMeta_EmptyPublicKey(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	meta, err := client.GetEncryptionMeta()
@@ -121,7 +118,6 @@ func TestGetEncryptionMeta_ServerError(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	_, err := client.GetEncryptionMeta()
@@ -154,7 +150,6 @@ func TestUpdateEncryptionMeta_Success(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	data := map[string]string{
@@ -185,7 +180,6 @@ func TestUpdateEncryptionMeta_ValidationError(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	err := client.UpdateEncryptionMeta(map[string]string{"salt": "bad"})
@@ -212,7 +206,6 @@ func TestUpdateEncryptionMeta_ServerError(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	err := client.UpdateEncryptionMeta(map[string]string{"salt": "value"})
@@ -255,7 +248,6 @@ func TestUpdateEncryptionMeta_SendsCorrectBody(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "test-access-token",
 		RefreshToken: "test-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	data := map[string]string{
@@ -306,7 +298,6 @@ func TestGetEncryptionMeta_AuthorizationHeader(t *testing.T) {
 	client := clientFromAuth(server.URL, &config.AuthConfig{
 		AccessToken:  "my-secret-token",
 		RefreshToken: "my-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
 	})
 
 	_, err := client.GetEncryptionMeta()

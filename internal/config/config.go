@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 const (
@@ -19,13 +18,12 @@ const (
 
 // AuthConfig holds tokens and encryption keys.
 type AuthConfig struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	UserEmail    string    `json:"user_email,omitempty"`
-	PINSalt      string    `json:"pin_salt,omitempty"`
-	PublicKey    string    `json:"public_key,omitempty"`
-	PrivateKey   string    `json:"private_key,omitempty"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	UserEmail    string `json:"user_email,omitempty"`
+	PINSalt      string `json:"pin_salt,omitempty"`
+	PublicKey    string `json:"public_key,omitempty"`
+	PrivateKey   string `json:"private_key,omitempty"`
 }
 
 // Config holds the active identity reference.

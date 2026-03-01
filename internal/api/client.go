@@ -82,7 +82,6 @@ func NewClientWithTokens(access, refresh string) (*Client, error) {
 		auth: &config.AuthConfig{
 			AccessToken:  access,
 			RefreshToken: refresh,
-			ExpiresAt:    time.Now().Add(TokenExpiryBuffer),
 		},
 	}, nil
 }
@@ -121,13 +120,6 @@ func (c *Client) doRequest(method, path string, body interface{}, auth bool) (*h
 
 // doAuthenticatedRequest performs a request with authentication and auto token refresh.
 func (c *Client) doAuthenticatedRequest(method, path string, body interface{}, result interface{}) error {
-	// Check if token is expired and refresh if needed.
-	if time.Now().After(c.auth.ExpiresAt) && c.auth.RefreshToken != "" {
-		if err := c.RefreshAccessToken(); err != nil {
-			return fmt.Errorf("session expired, run `ravi auth login` to re-authenticate: %w", err)
-		}
-	}
-
 	resp, err := c.doRequest(method, path, body, true)
 	if err != nil {
 		return err
@@ -207,24 +199,12 @@ func (c *Client) RefreshAccessToken() error {
 	if result.Refresh != "" {
 		c.auth.RefreshToken = result.Refresh
 	}
-	c.auth.ExpiresAt = time.Now().Add(TokenExpiryBuffer)
-
 	return config.SaveAuth(c.auth)
 }
 
 // IsAuthenticated checks if the client has valid auth tokens.
 func (c *Client) IsAuthenticated() bool {
-	if c.auth.AccessToken == "" || c.auth.RefreshToken == "" {
-		return false
-	}
-
-	if time.Now().After(c.auth.ExpiresAt) {
-		if err := c.RefreshAccessToken(); err != nil {
-			return false
-		}
-	}
-
-	return true
+	return c.auth.AccessToken != "" && c.auth.RefreshToken != ""
 }
 
 // GetUserEmail returns the stored user email.
