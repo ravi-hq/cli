@@ -10,7 +10,7 @@ Ravi CLI enables AI agents to receive and read communications on dedicated phone
 - **Sign up for services** using the assigned phone number and email address
 - **Read incoming messages** from services, notifications, and confirmations
 - **Automate workflows** that require email/SMS verification
-- **Store and retrieve E2E-encrypted passwords** per identity
+- **Store and retrieve E2E-encrypted website passwords** per identity
 
 Each agent gets their own dedicated inbox with:
 
@@ -121,7 +121,7 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 |---------|-------------|
 | `ravi identity list` | List all identities |
 | `ravi identity create --name "X"` | Create a new identity |
-| `ravi identity use <name-or-uuid>` | Set the active identity for this machine |
+| `ravi identity use <uuid>` | Set the active identity for this machine |
 
 ### Resources
 
@@ -229,7 +229,7 @@ ravi inbox email --json | jq -r '.[0].subject'
 Configuration is stored in `~/.ravi/` with secure file permissions (0600):
 
 - **`auth.json`** — access token (auto-refreshes), refresh token, user email, encryption keys
-- **`config.json`** — active identity (`identity_uuid`, `identity_name`)
+- **`config.json`** — active identity (`identity_uuid`, `identity_name`) and bound tokens (`bound_access_token`, `bound_refresh_token`)
 
 A `.ravi/config.json` in the current working directory overrides the global config, allowing per-project identity selection.
 

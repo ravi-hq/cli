@@ -47,17 +47,18 @@ Ciphertext format: `"e2e::" + base64.StdEncoding(ephemeralPK[32] || crypto_box(m
 - `IsEncrypted("")` must return `false`
 - This convention is shared across all three platforms
 
-### 6. PIN Session Caching
+### 6. Keypair Persistence
 
-- Keypair derived once per process and cached in package-level variable
+- PIN entered once during login; derived keypair saved to `auth.json` (public_key + private_key)
+- `ensureKeyPair()` loads persisted keypair from auth.json — no PIN prompt for any command
 - `ClearCachedKeyPair()` must be called on logout
-- PIN prompted via `term.ReadPassword()` to stderr (works with redirected stdout)
+- PIN prompted via `term.ReadPassword()` to stderr during login only
 
 ## Files to Review
 
 - `internal/crypto/e2e.go` — Key derivation, encrypt/decrypt, SealedBox
-- `internal/crypto/session.go` — PIN prompting, keypair caching
-- `pkg/cli/e2e.go` — Helpers: `ensureKeyPair()`, `tryDecrypt()`, `encodePublicKey()`
+- `internal/crypto/session.go` — PIN prompting (login only), keypair persistence
+- `pkg/cli/e2e.go` — Helpers: `ensureKeyPair()`, `tryDecrypt()`
 
 ## Process
 

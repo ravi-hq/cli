@@ -1,6 +1,6 @@
 # Ravi CLI — Identity for AI Agents
 
-You have access to `ravi`, a CLI that gives you your own phone number, email address, and credential vault. Use it to sign up for services, receive OTPs, complete 2FA, and store passwords — all autonomously.
+You have access to `ravi`, a CLI that gives you your own phone number, email address, and credential store. Use it to sign up for services, receive OTPs, complete 2FA, and store passwords — all autonomously.
 
 ## Prerequisites
 
@@ -212,29 +212,29 @@ ravi email compose \
 
 **Anti-spam:** High text-to-HTML ratio, no link shorteners, max 2-3 links, no ALL CAPS, one topic per email.
 
-## Credential Vault
+## Passwords
 
 Store and retrieve passwords for services you sign up for. All fields are E2E encrypted.
 
 ```bash
 # Create entry (auto-generates password if --password not given)
-ravi vault create example.com --json
-ravi vault create example.com --username "me@ravi.app" --password 'S3cret!' --json
+ravi passwords create example.com --json
+ravi passwords create example.com --username "me@ravi.app" --password 'S3cret!' --json
 
 # List all entries
-ravi vault list --json
+ravi passwords list --json
 
 # Retrieve (decrypted)
-ravi vault get <uuid> --json
+ravi passwords get <uuid> --json
 
 # Update
-ravi vault edit <uuid> --password 'NewPass!' --json
+ravi passwords edit <uuid> --password 'NewPass!' --json
 
 # Delete
-ravi vault delete <uuid> --json
+ravi passwords delete <uuid> --json
 
 # Generate a password without storing it
-ravi vault generate --length 24 --json
+ravi passwords generate --length 24 --json
 # → {"password": "xK9#mL2..."}
 ```
 
@@ -266,7 +266,7 @@ ravi secrets delete OPENAI_API_KEY --json
 Send feedback to the Ravi team — bugs, feature requests, praise, friction, ideas.
 
 ```bash
-ravi feedback "The vault set command is great but needs batch import" --json
+ravi feedback "The passwords command is great but needs batch import" --json
 ravi feedback "SMS delivery is slow" --subject "SMS latency" --json
 ```
 
@@ -284,7 +284,7 @@ PHONE=$(ravi get phone --json | jq -r '.phone_number')
 # 2. Use $EMAIL and $PHONE in the signup form
 
 # 3. Generate and store a password
-CREDS=$(ravi vault create example.com --username "$EMAIL" --json)
+CREDS=$(ravi passwords create example.com --username "$EMAIL" --json)
 PASSWORD=$(echo "$CREDS" | jq -r '.password')
 # Use $PASSWORD in the signup form
 
@@ -323,7 +323,7 @@ CODE=$(ravi inbox sms --unread --json | jq -r '.[0].preview' | grep -oE '[0-9]{4
 - **Always use `--json`** — all commands support it. Human-readable output is not designed for parsing.
 - **Poll, don't rush** — SMS/email delivery takes 2-10 seconds. Use `sleep 5` before checking.
 - **Auth is automatic** — token refresh happens transparently. If you get auth errors, ask the user to re-login.
-- **E2E encryption is transparent** — the CLI encrypts vault fields before sending and decrypts on retrieval. You see plaintext.
-- **Domain cleaning** — `ravi vault create` auto-cleans URLs to base domains (e.g., `https://mail.google.com/inbox` becomes `google.com`).
-- **Secrets vs passwords** — use `ravi secrets` for API keys/env vars (key-value), `ravi vault` for website credentials (domain/username/password).
+- **E2E encryption is transparent** — the CLI encrypts credential fields before sending and decrypts on retrieval. You see plaintext.
+- **Domain cleaning** — `ravi passwords create` auto-cleans URLs to base domains (e.g., `https://mail.google.com/inbox` becomes `google.com`).
+- **Secrets vs passwords** — use `ravi secrets` for API keys/env vars (key-value), `ravi passwords` for website credentials (domain/username/password).
 - **Give feedback** — use `ravi feedback` after any workflow to report bugs, friction, or praise.

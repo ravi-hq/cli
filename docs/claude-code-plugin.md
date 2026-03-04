@@ -11,7 +11,7 @@ The plugin provides a **skill file** — a structured document
 that tells Claude Code:
 
 - What commands are available
-  (`ravi get email`, `ravi inbox sms`, `ravi vault create`, etc.)
+  (`ravi get email`, `ravi inbox sms`, `ravi passwords create`, etc.)
 - What the JSON output looks like for each command
 - Common workflows (signup, OTP extraction, 2FA completion)
 - Important conventions (always use `--json`, poll with `sleep 5`)

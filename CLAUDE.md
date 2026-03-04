@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Ravi CLI is a Go command-line client for the Ravi backend. It gives AI agents programmatic
-access to their provisioned email, phone, credential vault, and 2FA — with E2E encryption
+access to their provisioned email, phone, credentials, and 2FA — with E2E encryption
 handled client-side.
 
 ## Using Ravi CLI as an AI Agent
@@ -10,7 +10,7 @@ handled client-side.
 # Identity management
 ravi identity list --json                # List all identities
 ravi identity create --name "X" --json   # Create a new identity
-ravi identity use <name-or-uuid>         # Switch active identity
+ravi identity use <uuid>                  # Switch active identity
 
 # Identity info
 ravi get email --json                    # Get assigned email address
@@ -89,21 +89,25 @@ internal/
 ├── config/            # Auth (auth.json) + identity config (config.json)
 ├── crypto/            # E2E encryption (Argon2id + NaCl SealedBox)
 │   ├── e2e.go         # Key derivation, encrypt/decrypt
-│   └── session.go     # PIN prompting, keypair caching (per-process)
+│   └── session.go     # PIN prompting (login only), keypair persistence
 ├── output/            # Human/JSON formatters (switched by --json flag)
 └── version/           # Build-time version info (ldflags)
-pkg/cli/               # Cobra commands (identity, inbox, vault, secrets, auth, get, message, email send)
+pkg/cli/               # Cobra commands (identity, inbox, passwords, secrets, auth, get, message, email send)
     ├── identity.go    # identity list/create/use commands
-    └── e2e.go         # Helpers: ensureKeyPair(), tryDecrypt(), encodePublicKey()
+    └── e2e.go         # Helpers: ensureKeyPair(), tryDecrypt()
 ```
 
 ### Identity Resolution
 
-Active identity is stored as `IdentityUUID` + `IdentityName` in `config.json`. Resolution order:
+Active identity is stored in `config.json` with:
+- `identity_uuid` + `identity_name` — which identity is active
+- `bound_access_token` + `bound_refresh_token` — identity-scoped JWT tokens
+
+Resolution order:
 
 1. `.ravi/config.json` in CWD (project-level override)
 2. `~/.ravi/config.json` (global default)
-3. Unscoped (no identity header sent)
+3. Unscoped (global token, no identity claim)
 
 ### Key Patterns
 
@@ -112,7 +116,9 @@ Active identity is stored as `IdentityUUID` + `IdentityName` in `config.json`. R
 - **Build-time config**: API URL injected via ldflags — no runtime config needed
 - **E2E encryption**: `internal/crypto/` handles client-side encrypt/decrypt.
   Empty strings never encrypted. `IsEncrypted()` checks `"e2e::"` prefix
-- **PIN caching**: Keypair derived once per process, cached in package-level variable. `ClearCachedKeyPair()` on logout
+- **Keypair persistence**: PIN entered once during login → keypair derived and saved to `auth.json`.
+  `ensureKeyPair()` loads the persisted keypair — no PIN prompt for any subsequent command.
+  `ClearCachedKeyPair()` on logout
 
 ## Code Style
 
@@ -126,7 +132,7 @@ Active identity is stored as `IdentityUUID` + `IdentityName` in `config.json`. R
 | Gotcha | Details |
 |--------|---------|
 | API_URL required at build time | `make build` without `API_URL=` errors. Binary without it crashes |
-| Keypair cached per-process | PIN prompted once, then cached. No re-prompt within same CLI invocation |
+| Keypair persisted at login | PIN entered once during login; derived keypair saved to auth.json. No PIN prompt for subsequent commands |
 | SMS conversation IDs contain `+` | Phone numbers in IDs need `url.PathEscape()` for API calls |
 | PIN prompted to stderr | Uses `term.ReadPassword()` — works even when stdout is redirected |
 | 3 PIN attempts max | After 3 wrong PINs, CLI aborts. No lockout on server side |
@@ -139,7 +145,7 @@ Active identity is stored as `IdentityUUID` + `IdentityName` in `config.json`. R
 |--------------|--------------|-----------------|
 | Hardcoding API URL | Binary won't work in other environments | Always inject via `make build API_URL=...` |
 | Parsing human output | Format changes break automation | Always use `--json` flag |
-| Re-prompting for PIN | Bad UX, keypair already cached | Use `ensureKeyPair()` which reads cache first |
+| Re-prompting for PIN | Bad UX, keypair already persisted | Use `ensureKeyPair()` which reads from auth.json |
 | Encrypting empty strings | Wastes space, decrypt returns empty anyway | Check before encrypting (`""` → `""`) |
 | Skipping `url.PathEscape` | Breaks API calls with `+` in phone numbers | Always escape conversation/thread IDs |
 
