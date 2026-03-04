@@ -14,8 +14,9 @@ const (
 	PathEncryption    = "/api/encryption/"
 	PathOwner         = "/api/master/"
 	PathPasswords     = "/api/passwords/"
-	PathSecrets       = "/api/vault/"
+	PathSecrets       = "/api/secrets/"
 	PathIdentities    = "/api/identities/"
+	PathBindIdentity  = "/api/auth/bind-identity/"
 
 	PathEmailAttachmentPresign = "/api/email-attachments/presign/"
 	PathEmailCompose           = "/api/email-messages/compose/"

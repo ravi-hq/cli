@@ -36,7 +36,7 @@ func GetOrPromptKeyPair(saltB64, verifierB64 string) (*KeyPair, error) {
 	}
 
 	for attempt := 1; attempt <= maxPINAttempts; attempt++ {
-		pin, err := PromptPIN("Enter your 6-digit encryption PIN: ")
+		pin, err := PromptPIN("Enter your Ravi PIN: ")
 		if err != nil {
 			return nil, err
 		}

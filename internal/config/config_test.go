@@ -241,33 +241,120 @@ func TestLoadConfig_CorruptFile(t *testing.T) {
 	}
 }
 
-// --- Resolution helpers ---
+// --- SaveConfig tests ---
 
-func TestResolveIdentityUUID_NoConfig(t *testing.T) {
-	_, cleanup := withTempHome(t)
+func TestSaveConfig_WritesCWD_WhenLocalExists(t *testing.T) {
+	tmpHome, cleanup := withTempHome(t)
 	defer cleanup()
 
-	uuid, err := ResolveIdentityUUID()
-	if err != nil {
-		t.Fatalf("ResolveIdentityUUID() error = %v", err)
+	// Set up a project directory with an existing .ravi/config.json.
+	tmpProject := t.TempDir()
+	localDir := filepath.Join(tmpProject, ".ravi")
+	os.MkdirAll(localDir, 0700)
+	os.WriteFile(filepath.Join(localDir, "config.json"), []byte(`{}`), 0600)
+
+	origWD, _ := os.Getwd()
+	os.Chdir(tmpProject)
+	defer os.Chdir(origWD)
+
+	cfg := &Config{
+		IdentityUUID:      "local-uuid",
+		IdentityName:      "Local",
+		BoundAccessToken:  "local-access",
+		BoundRefreshToken: "local-refresh",
 	}
-	if uuid != "" {
-		t.Errorf("ResolveIdentityUUID() = %v, want empty", uuid)
+	if err := SaveConfig(cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	// Verify it was written to the CWD path.
+	data, err := os.ReadFile(filepath.Join(localDir, "config.json"))
+	if err != nil {
+		t.Fatalf("ReadFile(local config) error = %v", err)
+	}
+	var loaded Config
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		t.Fatalf("Unmarshal error = %v", err)
+	}
+	if loaded.IdentityUUID != "local-uuid" {
+		t.Errorf("IdentityUUID = %v, want 'local-uuid'", loaded.IdentityUUID)
+	}
+
+	// Verify nothing was written to the global path.
+	globalPath := filepath.Join(tmpHome, ".ravi", "config.json")
+	if _, err := os.Stat(globalPath); !os.IsNotExist(err) {
+		t.Error("Expected global config.json to NOT exist when CWD config was present")
 	}
 }
 
-func TestResolveIdentityUUID_WithConfig(t *testing.T) {
+func TestSaveConfig_WritesGlobal_WhenNoCWDConfig(t *testing.T) {
+	tmpHome, cleanup := withTempHome(t)
+	defer cleanup()
+
+	// Use a project directory WITHOUT .ravi/config.json.
+	tmpProject := t.TempDir()
+	origWD, _ := os.Getwd()
+	os.Chdir(tmpProject)
+	defer os.Chdir(origWD)
+
+	cfg := &Config{
+		IdentityUUID:      "global-uuid",
+		IdentityName:      "Global",
+		BoundAccessToken:  "global-access",
+		BoundRefreshToken: "global-refresh",
+	}
+	if err := SaveConfig(cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	// Verify it was written to the global path.
+	globalPath := filepath.Join(tmpHome, ".ravi", "config.json")
+	data, err := os.ReadFile(globalPath)
+	if err != nil {
+		t.Fatalf("ReadFile(global config) error = %v", err)
+	}
+	var loaded Config
+	if err := json.Unmarshal(data, &loaded); err != nil {
+		t.Fatalf("Unmarshal error = %v", err)
+	}
+	if loaded.IdentityUUID != "global-uuid" {
+		t.Errorf("IdentityUUID = %v, want 'global-uuid'", loaded.IdentityUUID)
+	}
+}
+
+func TestSaveConfig_RoundTrip(t *testing.T) {
 	_, cleanup := withTempHome(t)
 	defer cleanup()
 
-	SaveGlobalConfig(&Config{IdentityUUID: "uuid-123"})
-
-	uuid, err := ResolveIdentityUUID()
-	if err != nil {
-		t.Fatalf("ResolveIdentityUUID() error = %v", err)
+	original := &Config{
+		IdentityUUID:      "rt-uuid",
+		IdentityName:      "RoundTrip",
+		BoundAccessToken:  "rt-access",
+		BoundRefreshToken: "rt-refresh",
 	}
-	if uuid != "uuid-123" {
-		t.Errorf("ResolveIdentityUUID() = %v, want 'uuid-123'", uuid)
+
+	// Save via SaveConfig (falls to global since no CWD config).
+	if err := SaveConfig(original); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	// Load it back via LoadConfig.
+	loaded, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if loaded.IdentityUUID != original.IdentityUUID {
+		t.Errorf("IdentityUUID = %v, want %v", loaded.IdentityUUID, original.IdentityUUID)
+	}
+	if loaded.IdentityName != original.IdentityName {
+		t.Errorf("IdentityName = %v, want %v", loaded.IdentityName, original.IdentityName)
+	}
+	if loaded.BoundAccessToken != original.BoundAccessToken {
+		t.Errorf("BoundAccessToken = %v, want %v", loaded.BoundAccessToken, original.BoundAccessToken)
+	}
+	if loaded.BoundRefreshToken != original.BoundRefreshToken {
+		t.Errorf("BoundRefreshToken = %v, want %v", loaded.BoundRefreshToken, original.BoundRefreshToken)
 	}
 }
 

@@ -26,10 +26,12 @@ type AuthConfig struct {
 	PrivateKey   string `json:"private_key,omitempty"`
 }
 
-// Config holds the active identity reference.
+// Config holds the active identity reference and bound tokens.
 type Config struct {
-	IdentityUUID string `json:"identity_uuid,omitempty"`
-	IdentityName string `json:"identity_name,omitempty"`
+	IdentityUUID      string `json:"identity_uuid,omitempty"`
+	IdentityName      string `json:"identity_name,omitempty"`
+	BoundAccessToken  string `json:"bound_access_token,omitempty"`
+	BoundRefreshToken string `json:"bound_refresh_token,omitempty"`
 }
 
 // Dir returns the global config directory (~/.ravi/).
@@ -156,16 +158,31 @@ func SaveGlobalConfig(cfg *Config) error {
 	return nil
 }
 
-// --- Resolution helpers ---
-
-// ResolveIdentityUUID resolves the active identity UUID from the config chain.
-// Returns empty string if no identity is configured (unscoped).
-func ResolveIdentityUUID() (string, error) {
-	cfg, err := LoadConfig()
+// SaveConfig writes the config to the appropriate location:
+// - If .ravi/config.json exists in CWD, write there (project-level)
+// - Otherwise, write to ~/.ravi/config.json (global)
+// This mirrors LoadConfig() which reads CWD first.
+func SaveConfig(cfg *Config) error {
+	cwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return fmt.Errorf("getting working directory: %w", err)
 	}
-	return cfg.IdentityUUID, nil
+
+	localPath := filepath.Join(cwd, configDirName, configFileName)
+	if _, err := os.Stat(localPath); err == nil {
+		data, err := json.MarshalIndent(cfg, "", "  ")
+		if err != nil {
+			return fmt.Errorf("encoding config: %w", err)
+		}
+		if err := os.WriteFile(localPath, data, configFilePerm); err != nil {
+			return fmt.Errorf("writing project config: %w", err)
+		}
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking project config %s: %w", localPath, err)
+	}
+
+	return SaveGlobalConfig(cfg)
 }
 
 // --- Cleanup ---

@@ -152,7 +152,7 @@ func (d *DeviceFlow) setupEncryption(auth *config.AuthConfig) error {
 // initialEncryptionSetup creates encryption keys from a user-chosen PIN and
 // registers them with the server. Also generates and saves a recovery key.
 func (d *DeviceFlow) initialEncryptionSetup(auth *config.AuthConfig) error {
-	fmt.Println("\nSet up encryption for your vault.")
+	fmt.Println("\nSet up zero-knowledge encryption for your Ravi account.")
 	pin, err := crypto.PromptPIN("Choose a 6-digit encryption PIN: ")
 	if err != nil {
 		return err
@@ -277,10 +277,18 @@ func (d *DeviceFlow) selectIdentity() error {
 		selected = identities[choice-1]
 	}
 
-	// Save identity to global config.
+	// Bind identity to get identity-scoped tokens.
+	bindResult, err := d.client.BindIdentity(selected.UUID)
+	if err != nil {
+		return fmt.Errorf("binding identity: %w", err)
+	}
+
+	// Save bound tokens + identity info to global config.
 	if err := config.SaveGlobalConfig(&config.Config{
-		IdentityUUID: selected.UUID,
-		IdentityName: selected.Name,
+		IdentityUUID:      selected.UUID,
+		IdentityName:      selected.Name,
+		BoundAccessToken:  bindResult.Access,
+		BoundRefreshToken: bindResult.Refresh,
 	}); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}

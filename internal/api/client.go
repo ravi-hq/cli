@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -16,14 +17,14 @@ import (
 )
 
 type Client struct {
-	httpClient   *http.Client
-	baseURL      string
-	auth         *config.AuthConfig
-	identityUUID string // X-Ravi-Identity header value (empty = unscoped)
+	httpClient *http.Client
+	baseURL    string
+	auth       *config.AuthConfig
+	bound      bool // true when operating with identity-scoped (bound) tokens
 }
 
-// NewClient creates a scoped API client: loads auth + resolves identity UUID
-// from the config chain. Most commands should use this.
+// NewClient creates a scoped API client: loads auth + uses bound tokens from
+// the config chain when available. Most commands should use this.
 func NewClient() (*Client, error) {
 	baseURL, err := version.GetAPIBaseURL()
 	if err != nil {
@@ -35,17 +36,34 @@ func NewClient() (*Client, error) {
 		return nil, fmt.Errorf("failed to load auth: %w", err)
 	}
 
-	// Resolve identity — empty string means unscoped (no config file yet).
-	identityUUID, err := config.ResolveIdentityUUID()
+	// Load bound tokens from config if available.
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("resolving identity: %w", err)
+		return nil, fmt.Errorf("loading config: %w", err)
+	}
+
+	// Use bound tokens for identity-scoped operations.
+	effectiveAuth := auth
+	isBound := false
+	if cfg.BoundAccessToken != "" {
+		effectiveAuth = &config.AuthConfig{
+			AccessToken:  cfg.BoundAccessToken,
+			RefreshToken: cfg.BoundRefreshToken,
+			UserEmail:    auth.UserEmail,
+			PINSalt:      auth.PINSalt,
+			PublicKey:     auth.PublicKey,
+			PrivateKey:    auth.PrivateKey,
+		}
+		isBound = true
+	} else if cfg.IdentityUUID != "" {
+		fmt.Fprintf(os.Stderr, "Warning: identity %q (%s) has no scoped token — using global token; re-run 'ravi identity use' to fix\n", cfg.IdentityName, cfg.IdentityUUID)
 	}
 
 	return &Client{
-		httpClient:   &http.Client{Timeout: 30 * time.Second},
-		baseURL:      strings.TrimSuffix(baseURL, "/"),
-		auth:         auth,
-		identityUUID: identityUUID,
+		httpClient: &http.Client{Timeout: 30 * time.Second},
+		baseURL:    strings.TrimSuffix(baseURL, "/"),
+		auth:       effectiveAuth,
+		bound:      isBound,
 	}, nil
 }
 
@@ -109,10 +127,6 @@ func (c *Client) doRequest(method, path string, body interface{}, auth bool) (*h
 
 	if auth && c.auth.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+c.auth.AccessToken)
-	}
-
-	if auth && c.identityUUID != "" {
-		req.Header.Set("X-Ravi-Identity", c.identityUUID)
 	}
 
 	return c.httpClient.Do(req)
@@ -195,11 +209,39 @@ func (c *Client) RefreshAccessToken() error {
 		return err
 	}
 
+	// Note: there is a narrow TOCTOU race if two CLI processes refresh bound
+	// tokens concurrently. The last writer wins. Acceptable for a CLI tool.
+
+	// Persist BEFORE updating in-memory state
+	if c.bound {
+		cfg, err := config.LoadConfig()
+		if err != nil {
+			return fmt.Errorf("loading config to save refreshed tokens: %w", err)
+		}
+		cfg.BoundAccessToken = result.Access
+		if result.Refresh != "" {
+			cfg.BoundRefreshToken = result.Refresh
+		}
+		if err := config.SaveConfig(cfg); err != nil {
+			return fmt.Errorf("saving refreshed bound tokens: %w", err)
+		}
+	} else {
+		newAuth := *c.auth // copy
+		newAuth.AccessToken = result.Access
+		if result.Refresh != "" {
+			newAuth.RefreshToken = result.Refresh
+		}
+		if err := config.SaveAuth(&newAuth); err != nil {
+			return fmt.Errorf("saving refreshed tokens: %w", err)
+		}
+	}
+
+	// Only update in-memory state after successful persist
 	c.auth.AccessToken = result.Access
 	if result.Refresh != "" {
 		c.auth.RefreshToken = result.Refresh
 	}
-	return config.SaveAuth(c.auth)
+	return nil
 }
 
 // IsAuthenticated checks if the client has valid auth tokens.
@@ -212,9 +254,22 @@ func (c *Client) GetUserEmail() string {
 	return c.auth.UserEmail
 }
 
-// GetIdentityUUID returns the resolved identity UUID (empty if unscoped).
-func (c *Client) GetIdentityUUID() string {
-	return c.identityUUID
+// BindIdentity calls the bind-identity endpoint to get identity-scoped tokens.
+func (c *Client) BindIdentity(identityUUID string) (*BindIdentityResponse, error) {
+	req := map[string]string{
+		"identity": identityUUID,
+	}
+	var result BindIdentityResponse
+	if err := c.doAuthenticatedRequest(http.MethodPost, PathBindIdentity, req, &result); err != nil {
+		return nil, err
+	}
+	if result.Access == "" {
+		return nil, fmt.Errorf("bind-identity returned empty access token")
+	}
+	if result.Refresh == "" {
+		return nil, fmt.Errorf("bind-identity returned empty refresh token")
+	}
+	return &result, nil
 }
 
 // BuildURL builds a full URL with query parameters.

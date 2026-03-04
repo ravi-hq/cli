@@ -14,7 +14,7 @@ var identityNameFlag string
 var identityCmd = &cobra.Command{
 	Use:   "identity",
 	Short: "Manage identities",
-	Long:  "List, create, and switch identities. Each identity bundles an email, phone, and vault.",
+	Long:  "List, create, and switch identities. Each identity bundles an email, phone, and credentials.",
 }
 
 var identityListCmd = &cobra.Command{
@@ -54,15 +54,15 @@ var identityCreateCmd = &cobra.Command{
 }
 
 var identityUseCmd = &cobra.Command{
-	Use:   "use <name-or-uuid>",
-	Short: "Set the active identity for this machine",
-	Long: `Set which identity is used for all ravi commands globally.
-Use a project-level .ravi/config.json to override per-directory.`,
+	Use:   "use <uuid>",
+	Short: "Set the active identity",
+	Long: `Set which identity is used for all ravi commands.
+Writes to .ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target := args[0]
 
-		// Resolve identity by name or UUID.
+		// Resolve identity by UUID.
 		client, err := api.NewUnscopedClient()
 		if err != nil {
 			return err
@@ -75,7 +75,7 @@ Use a project-level .ravi/config.json to override per-directory.`,
 
 		var matched *api.Identity
 		for _, id := range identities {
-			if id.Name == target || id.UUID == target {
+			if id.UUID == target {
 				matched = &id
 				break
 			}
@@ -84,9 +84,18 @@ Use a project-level .ravi/config.json to override per-directory.`,
 			return fmt.Errorf("identity %q not found", target)
 		}
 
-		if err := config.SaveGlobalConfig(&config.Config{
-			IdentityUUID: matched.UUID,
-			IdentityName: matched.Name,
+		// Bind identity to get identity-scoped tokens.
+		bindResult, err := client.BindIdentity(matched.UUID)
+		if err != nil {
+			return fmt.Errorf("binding identity: %w", err)
+		}
+
+		// Save bound tokens + identity info to config (CWD-aware).
+		if err := config.SaveConfig(&config.Config{
+			IdentityUUID:      matched.UUID,
+			IdentityName:      matched.Name,
+			BoundAccessToken:  bindResult.Access,
+			BoundRefreshToken: bindResult.Refresh,
 		}); err != nil {
 			return err
 		}

@@ -63,6 +63,12 @@ type RefreshResponse struct {
 	Refresh string `json:"refresh,omitempty"`
 }
 
+// BindIdentityResponse holds the token pair returned by the bind-identity endpoint.
+type BindIdentityResponse struct {
+	Access  string `json:"access"`
+	Refresh string `json:"refresh"`
+}
+
 // EmailThread represents an email conversation thread summary from the /api/email-inbox/ endpoint.
 // It contains metadata about the thread including message counts and timestamps.
 type EmailThread struct {
