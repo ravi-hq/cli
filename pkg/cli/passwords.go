@@ -23,9 +23,9 @@ var (
 	pwDomain       string
 )
 
-var vaultCmd = &cobra.Command{
-	Use:   "vault",
-	Short: "Manage credential vault",
+var passwordsCmd = &cobra.Command{
+	Use:   "passwords",
+	Short: "Manage website passwords",
 }
 
 var pwListCmd = &cobra.Command{
@@ -325,11 +325,11 @@ func init() {
 	pwGenerateCmd.Flags().StringVar(&pwExcludeChars, "exclude-chars", "", "Exclude specific characters")
 
 	// Wire up command tree
-	vaultCmd.AddCommand(pwListCmd)
-	vaultCmd.AddCommand(pwGetCmd)
-	vaultCmd.AddCommand(pwCreateCmd)
-	vaultCmd.AddCommand(pwEditCmd)
-	vaultCmd.AddCommand(pwDeleteCmd)
-	vaultCmd.AddCommand(pwGenerateCmd)
-	rootCmd.AddCommand(vaultCmd)
+	passwordsCmd.AddCommand(pwListCmd)
+	passwordsCmd.AddCommand(pwGetCmd)
+	passwordsCmd.AddCommand(pwCreateCmd)
+	passwordsCmd.AddCommand(pwEditCmd)
+	passwordsCmd.AddCommand(pwDeleteCmd)
+	passwordsCmd.AddCommand(pwGenerateCmd)
+	rootCmd.AddCommand(passwordsCmd)
 }

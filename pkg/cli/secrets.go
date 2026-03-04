@@ -124,12 +124,23 @@ var secretSetCmd = &cobra.Command{
 			return fmt.Errorf("encrypting value: %w", err)
 		}
 
-		entry := api.SecretEntry{
-			Key:   args[0],
-			Value: encValue,
+		// Upsert: check if key already exists, update if so.
+		existing, err := client.GetSecret(args[0])
+		if err != nil {
+			return err
 		}
 
-		result, err := client.CreateSecret(entry)
+		var result *api.SecretEntry
+		if existing != nil {
+			result, err = client.UpdateSecret(existing.UUID, map[string]interface{}{
+				"value": encValue,
+			})
+		} else {
+			result, err = client.CreateSecret(api.SecretEntry{
+				Key:   args[0],
+				Value: encValue,
+			})
+		}
 		if err != nil {
 			return err
 		}
