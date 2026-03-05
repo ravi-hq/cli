@@ -231,6 +231,21 @@ type SecretEntry struct {
 	UpdatedDt string `json:"updated_dt"`
 }
 
+// ContactEntry represents a stored contact.
+type ContactEntry struct {
+	UUID              string `json:"uuid"`
+	Email             string `json:"email"`
+	PhoneNumber       string `json:"phone_number"`
+	DisplayName       string `json:"display_name"`
+	Nickname          string `json:"nickname"`
+	IsTrusted         bool   `json:"is_trusted"`
+	Source            string `json:"source"`
+	InteractionCount  int    `json:"interaction_count"`
+	LastInteractionDt string `json:"last_interaction_dt"`
+	CreatedDt         string `json:"created_dt"`
+	UpdatedDt         string `json:"updated_dt"`
+}
+
 // GeneratedPassword is the response from the password generator endpoint.
 type GeneratedPassword struct {
 	Password string `json:"password"`

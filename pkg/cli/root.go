@@ -28,8 +28,9 @@ Commands:
   inbox      Read messages (sms/email)
   message    Individual message access
   email      Send emails (compose/reply/reply-all)
-  passwords  Website passwords (create/get/list/edit/delete/generate)
+  passwords  Website passwords (create/get/list/update/delete/generate)
   secrets    Key-value secrets (list/get/set/delete)
+  contacts   Manage contacts (list/search/get/create/update/delete)
 
 All commands support --json for structured output.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
