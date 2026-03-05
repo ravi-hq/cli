@@ -10,6 +10,7 @@ import (
 )
 
 var identityNameFlag string
+var identityEmailFlag string
 
 var identityCmd = &cobra.Command{
 	Use:   "identity",
@@ -44,7 +45,7 @@ var identityCreateCmd = &cobra.Command{
 			return err
 		}
 
-		identity, err := client.CreateIdentity(identityNameFlag)
+		identity, err := client.CreateIdentity(identityNameFlag, identityEmailFlag)
 		if err != nil {
 			return err
 		}
@@ -111,6 +112,7 @@ Writes to .ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json.`
 func init() {
 	identityCreateCmd.Flags().StringVar(&identityNameFlag, "name", "", "Name for the new identity (required)")
 	identityCreateCmd.MarkFlagRequired("name")
+	identityCreateCmd.Flags().StringVar(&identityEmailFlag, "email", "", "Custom email local part (e.g. 'myagent')")
 
 	identityCmd.AddCommand(identityListCmd)
 	identityCmd.AddCommand(identityCreateCmd)

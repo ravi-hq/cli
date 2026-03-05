@@ -162,7 +162,7 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 | `ravi passwords list` | List all stored passwords |
 | `ravi passwords get <uuid>` | Show a stored password (decrypted) |
 | `ravi passwords create <domain>` | Create a new entry (auto-generates password if not provided) |
-| `ravi passwords edit <uuid>` | Edit a stored password entry |
+| `ravi passwords update <uuid>` | Update a stored password entry |
 | `ravi passwords delete <uuid>` | Delete a stored password entry |
 | `ravi passwords generate` | Generate a random password without storing |
 

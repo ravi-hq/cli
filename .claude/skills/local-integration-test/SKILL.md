@@ -147,8 +147,8 @@ on server → decrypt client-side on retrieval.
 ./bin/ravi passwords list --json
 # Expected: Username decrypted, password still shows e2e:: (intentional for list view)
 
-# Edit
-./bin/ravi passwords edit <uuid> --password "NewPassword!" --notes "updated" --json
+# Update
+./bin/ravi passwords update <uuid> --password "NewPassword!" --notes "updated" --json
 # Expected: Updated entry with new e2e:: ciphertext, updated_dt changed
 
 # Verify edit

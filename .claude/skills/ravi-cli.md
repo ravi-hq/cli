@@ -19,7 +19,7 @@ Get the email and phone number assigned to you:
 ```bash
 # Your email address (use this for signups)
 ravi get email --json
-# → {"id": 1, "email": "janedoe@ravi.app", "created_dt": "..."}
+# → {"id": 1, "email": "janedoe@example.com", "created_dt": "..."}
 
 # Your phone number (use this for SMS verification)
 ravi get phone --json
@@ -94,7 +94,7 @@ ravi inbox email <thread_id> --json
     {
       "id": 10,
       "from_email": "noreply@example.com",
-      "to_email": "janedoe@ravi.app",
+      "to_email": "janedoe@example.com",
       "subject": "Verify your email",
       "text_content": "Click here to verify: https://example.com/verify?token=xyz",
       "direction": "incoming",
@@ -219,7 +219,7 @@ Store and retrieve passwords for services you sign up for. All fields are E2E en
 ```bash
 # Create entry (auto-generates password if --password not given)
 ravi passwords create example.com --json
-ravi passwords create example.com --username "me@ravi.app" --password 'S3cret!' --json
+ravi passwords create example.com --username "me@example.com" --password 'S3cret!' --json
 
 # List all entries
 ravi passwords list --json
@@ -228,7 +228,7 @@ ravi passwords list --json
 ravi passwords get <uuid> --json
 
 # Update
-ravi passwords edit <uuid> --password 'NewPass!' --json
+ravi passwords update <uuid> --password 'NewPass!' --json
 
 # Delete
 ravi passwords delete <uuid> --json

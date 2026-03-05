@@ -11,9 +11,12 @@ func (c *Client) ListIdentities() ([]Identity, error) {
 	return identities, nil
 }
 
-// CreateIdentity creates a new identity with the given name.
-func (c *Client) CreateIdentity(name string) (*Identity, error) {
+// CreateIdentity creates a new identity with the given name and optional custom email local part.
+func (c *Client) CreateIdentity(name string, email string) (*Identity, error) {
 	req := map[string]string{"name": name}
+	if email != "" {
+		req["email"] = email
+	}
 	var identity Identity
 	if err := c.doAuthenticatedRequest(http.MethodPost, PathIdentities, req, &identity); err != nil {
 		return nil, err

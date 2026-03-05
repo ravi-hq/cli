@@ -34,7 +34,7 @@ ravi passwords list --json               # List all entries
 ravi passwords get <uuid> --json         # Show entry (decrypted)
 ravi passwords create example.com        # Create (auto-generates password)
 ravi passwords create example.com --username me@email.com --password 'mypass'
-ravi passwords edit <uuid> --password 'new'  # Edit fields
+ravi passwords update <uuid> --password 'new'  # Update fields
 ravi passwords delete <uuid>             # Delete entry
 ravi passwords generate --length 32      # Generate without storing
 

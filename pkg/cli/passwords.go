@@ -184,8 +184,8 @@ var pwCreateCmd = &cobra.Command{
 }
 
 var pwEditCmd = &cobra.Command{
-	Use:   "edit <uuid>",
-	Short: "Edit a stored password entry",
+	Use:   "update <uuid>",
+	Short: "Update a stored password entry",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := api.NewClient()
