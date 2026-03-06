@@ -11,7 +11,9 @@ func (c *Client) ListIdentities() ([]Identity, error) {
 	return identities, nil
 }
 
-// CreateIdentity creates a new identity with the given name and optional custom email local part.
+// CreateIdentity creates a new identity with the given name and optional email address.
+// Email accepts three formats: local part only (e.g. "shopping"), full email
+// (e.g. "shopping@acme.com"), or empty string for auto-generated.
 func (c *Client) CreateIdentity(name string, email string) (*Identity, error) {
 	req := map[string]string{"name": name}
 	if email != "" {
@@ -22,5 +24,14 @@ func (c *Client) CreateIdentity(name string, email string) (*Identity, error) {
 		return nil, err
 	}
 	return &identity, nil
+}
+
+// ListDomains returns all available email domains (platform + user's custom domains).
+func (c *Client) ListDomains() ([]EmailDomain, error) {
+	var domains []EmailDomain
+	if err := c.doAuthenticatedRequest(http.MethodGet, PathDomains, nil, &domains); err != nil {
+		return nil, err
+	}
+	return domains, nil
 }
 

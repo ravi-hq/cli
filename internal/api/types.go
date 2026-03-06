@@ -324,6 +324,15 @@ type ForwardRequest struct {
 	AttachmentUUIDs []string `json:"attachment_uuids,omitempty"`
 }
 
+// EmailDomain represents an available email domain from the /api/domains/ endpoint.
+type EmailDomain struct {
+	UUID       string `json:"uuid"`
+	Domain     string `json:"domain"`
+	IsPlatform bool   `json:"is_platform"`
+	IsVerified bool   `json:"is_verified"`
+	CreatedDt  string `json:"created_dt"`
+}
+
 // RateLimitError represents a 429 Too Many Requests response from the API.
 type RateLimitError struct {
 	Detail            string `json:"detail"`

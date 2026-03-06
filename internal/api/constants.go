@@ -18,6 +18,7 @@ const (
 	PathIdentities    = "/api/identities/"
 	PathBindIdentity  = "/api/auth/bind-identity/"
 	PathContacts      = "/api/contacts/"
+	PathDomains       = "/api/domains/"
 
 	PathEmailAttachmentPresign = "/api/email-attachments/presign/"
 	PathEmailCompose           = "/api/email-messages/compose/"
