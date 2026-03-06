@@ -1,7 +1,6 @@
 ---
 name: release
-description: Guide the Ravi CLI release process — version bump, tagging, and verification
-disable-model-invocation: true
+description: Use when releasing a new Ravi CLI version — version bump, tagging, and verification
 ---
 
 # Release Ravi CLI

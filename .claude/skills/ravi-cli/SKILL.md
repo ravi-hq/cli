@@ -1,3 +1,8 @@
+---
+name: ravi-cli
+description: Use when working with the Ravi CLI — identity, inbox, passwords, secrets, email, SMS, and feedback commands
+---
+
 # Ravi CLI — Identity for AI Agents
 
 You have access to `ravi`, a CLI that gives you your own phone number, email address, and credential store. Use it to sign up for services, receive OTPs, complete 2FA, and store passwords — all autonomously.

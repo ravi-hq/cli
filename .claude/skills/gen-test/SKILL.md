@@ -1,7 +1,6 @@
 ---
 name: gen-test
-description: Generate Go test file for a module following Ravi CLI test conventions
-disable-model-invocation: true
+description: Use when generating a Go test file for a module following Ravi CLI test conventions
 ---
 
 # Generate Go Test File
