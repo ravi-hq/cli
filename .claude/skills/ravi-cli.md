@@ -139,39 +139,33 @@ ravi email compose --to "recipient@example.com" --subject "Subject" --body "<p>H
 
 ```bash
 # Reply to sender only
-ravi email reply <message_id> --subject "Re: Original Subject" --body "<p>Reply content</p>" --json
+ravi email reply <message_id> --body "<p>Reply content</p>" --json
 
 # Reply to all recipients
-ravi email reply-all <message_id> --subject "Re: Original Subject" --body "<p>Reply content</p>" --json
+ravi email reply-all <message_id> --body "<p>Reply content</p>" --json
 
 # Reply with CC
-ravi email reply <message_id> --subject "Re: Project Update" --body "<p>Adding the team.</p>" --cc "team@example.com" --json
+ravi email reply <message_id> --body "<p>Adding the team.</p>" --cc "team@example.com" --json
 ```
 
 **Flags:**
-- `--subject` (required): Email subject line
 - `--body` (required): Email body (HTML supported — use tags like `<p>`, `<h2>`, `<ul>` for formatting)
 - `--cc`: CC recipients (comma-separated)
 - `--bcc`: BCC recipients (comma-separated)
 - `--attach`: File path to attach (can be repeated for multiple files)
-
-**Note:** The subject must be provided because the original is E2E encrypted on the server.
 
 ### Forward an email
 
 ```bash
-ravi email forward <message_id> --to "recipient@example.com" --subject "Fwd: Original Subject" --body "<p>FYI — see below.</p>" --json
+ravi email forward <message_id> --to "recipient@example.com" --body "<p>FYI — see below.</p>" --json
 ```
 
 **Flags:**
 - `--to` (required): Recipient email address
-- `--subject` (required): Email subject line
 - `--body` (required): Email body (HTML supported — use tags like `<p>`, `<h2>`, `<ul>` for formatting)
 - `--cc`: CC recipients (comma-separated)
 - `--bcc`: BCC recipients (comma-separated)
 - `--attach`: File path to attach (can be repeated for multiple files)
-
-**Note:** The subject must be provided because the original is E2E encrypted on the server.
 
 ## Email Writing Guide
 

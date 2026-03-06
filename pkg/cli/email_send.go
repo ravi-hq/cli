@@ -71,7 +71,6 @@ var replyCmd = &cobra.Command{
 	Short: "Reply to an email (sender only)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		subject, _ := cmd.Flags().GetString("subject")
 		body, _ := cmd.Flags().GetString("body")
 		cc, _ := cmd.Flags().GetString("cc")
 		bcc, _ := cmd.Flags().GetString("bcc")
@@ -89,7 +88,6 @@ var replyCmd = &cobra.Command{
 
 		req := api.ReplyRequest{
 			Content:         body,
-			Subject:         subject,
 			AttachmentUUIDs: attachmentUUIDs,
 		}
 		if cc != "" {
@@ -113,7 +111,6 @@ var replyAllCmd = &cobra.Command{
 	Short: "Reply to all recipients of an email",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		subject, _ := cmd.Flags().GetString("subject")
 		body, _ := cmd.Flags().GetString("body")
 		cc, _ := cmd.Flags().GetString("cc")
 		bcc, _ := cmd.Flags().GetString("bcc")
@@ -131,7 +128,6 @@ var replyAllCmd = &cobra.Command{
 
 		req := api.ReplyRequest{
 			Content:         body,
-			Subject:         subject,
 			AttachmentUUIDs: attachmentUUIDs,
 		}
 		if cc != "" {
@@ -156,7 +152,6 @@ var forwardCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		to, _ := cmd.Flags().GetString("to")
-		subject, _ := cmd.Flags().GetString("subject")
 		body, _ := cmd.Flags().GetString("body")
 		cc, _ := cmd.Flags().GetString("cc")
 		bcc, _ := cmd.Flags().GetString("bcc")
@@ -174,7 +169,6 @@ var forwardCmd = &cobra.Command{
 
 		req := api.ForwardRequest{
 			ToEmail:         to,
-			Subject:         subject,
 			Content:         body,
 			AttachmentUUIDs: attachmentUUIDs,
 		}
@@ -238,24 +232,20 @@ func init() {
 
 	// Reply flags (each command gets its own flag set, no shared state)
 	for _, cmd := range []*cobra.Command{replyCmd, replyAllCmd} {
-		cmd.Flags().String("subject", "", "Email subject (required)")
 		cmd.Flags().String("body", "", "Email body — HTML supported (required)")
 		cmd.Flags().String("cc", "", "CC recipients (comma-separated)")
 		cmd.Flags().String("bcc", "", "BCC recipients (comma-separated)")
 		cmd.Flags().StringSlice("attach", nil, "File paths to attach")
-		cmd.MarkFlagRequired("subject")
 		cmd.MarkFlagRequired("body")
 	}
 
 	// Forward flags
 	forwardCmd.Flags().String("to", "", "Recipient email address (required)")
-	forwardCmd.Flags().String("subject", "", "Email subject (required)")
 	forwardCmd.Flags().String("body", "", "Email body — HTML supported (required)")
 	forwardCmd.Flags().String("cc", "", "CC recipients (comma-separated)")
 	forwardCmd.Flags().String("bcc", "", "BCC recipients (comma-separated)")
 	forwardCmd.Flags().StringSlice("attach", nil, "File paths to attach")
 	forwardCmd.MarkFlagRequired("to")
-	forwardCmd.MarkFlagRequired("subject")
 	forwardCmd.MarkFlagRequired("body")
 
 	emailSendCmd.AddCommand(composeCmd)

@@ -60,7 +60,6 @@ func TestReplyEmail(t *testing.T) {
 	client := newTestClient(server.URL)
 	result, err := client.ReplyEmail("123", ReplyRequest{
 		Content: "reply body",
-		Subject: "Re: Test",
 	})
 	if err != nil {
 		t.Fatalf("ReplyEmail() error = %v", err)
@@ -87,7 +86,6 @@ func TestReplyAllEmail(t *testing.T) {
 	client := newTestClient(server.URL)
 	result, err := client.ReplyAllEmail("456", ReplyRequest{
 		Content: "reply all body",
-		Subject: "Re: Test",
 	})
 	if err != nil {
 		t.Fatalf("ReplyAllEmail() error = %v", err)
@@ -114,7 +112,6 @@ func TestReplyEmailWithCC(t *testing.T) {
 	client := newTestClient(server.URL)
 	_, err := client.ReplyEmail("789", ReplyRequest{
 		Content: "reply with cc",
-		Subject: "Re: Test",
 		CC:      []string{"alice@example.com", "bob@example.com"},
 		BCC:     []string{"secret@example.com"},
 	})
@@ -151,7 +148,6 @@ func TestForwardEmail(t *testing.T) {
 	client := newTestClient(server.URL)
 	result, err := client.ForwardEmail("100", ForwardRequest{
 		ToEmail: "forward@example.com",
-		Subject: "Fwd: Test",
 		Content: "<p>FYI</p>",
 		CC:      []string{"cc@example.com"},
 	})
@@ -166,9 +162,6 @@ func TestForwardEmail(t *testing.T) {
 	}
 	if receivedBody.ToEmail != "forward@example.com" {
 		t.Errorf("body.ToEmail = %v, want forward@example.com", receivedBody.ToEmail)
-	}
-	if receivedBody.Subject != "Fwd: Test" {
-		t.Errorf("body.Subject = %v, want Fwd: Test", receivedBody.Subject)
 	}
 	if len(receivedBody.CC) != 1 || receivedBody.CC[0] != "cc@example.com" {
 		t.Errorf("body.CC = %v, want [cc@example.com]", receivedBody.CC)

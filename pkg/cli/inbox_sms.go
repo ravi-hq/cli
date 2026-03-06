@@ -43,15 +43,6 @@ func listSMSConversations(client *api.Client) error {
 		return err
 	}
 
-	kp, err := ensureKeyPair()
-	if err != nil {
-		return err
-	}
-
-	for i := range conversations {
-		conversations[i].Preview = tryDecrypt(conversations[i].Preview, kp)
-	}
-
 	if jsonOutput {
 		return output.Current.Print(conversations)
 	}
@@ -82,15 +73,6 @@ func showSMSConversation(client *api.Client, conversationID string) error {
 	conversation, err := client.GetSMSConversation(conversationID)
 	if err != nil {
 		return err
-	}
-
-	kp, err := ensureKeyPair()
-	if err != nil {
-		return err
-	}
-
-	for i := range conversation.Messages {
-		conversation.Messages[i].Body = tryDecrypt(conversation.Messages[i].Body, kp)
 	}
 
 	if jsonOutput {

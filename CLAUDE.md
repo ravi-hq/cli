@@ -2,7 +2,7 @@
 
 Ravi CLI is a Go command-line client for the Ravi backend. It gives AI agents programmatic
 access to their provisioned email, phone, credentials, and 2FA — with E2E encryption
-handled client-side.
+for vault credentials (passwords and secrets) handled client-side.
 
 ## Using Ravi CLI as an AI Agent
 
@@ -24,10 +24,10 @@ ravi message email <message_id> --json   # Specific email by ID
 
 # Send emails
 ravi email compose --to user@example.com --subject "Hi" --body "<p>Hello</p>" --json
-ravi email reply <message_id> --subject "Re: Hi" --body "<p>Reply</p>" --json
-ravi email reply <message_id> --subject "Re: Hi" --body "<p>Reply</p>" --cc "a@b.com" --json  # Reply with CC
-ravi email reply-all <message_id> --subject "Re: Hi" --body "<p>Reply all</p>" --json
-ravi email forward <message_id> --to user@example.com --subject "Fwd: Hi" --body "<p>FYI</p>" --json  # Forward email
+ravi email reply <message_id> --body "<p>Reply</p>" --json
+ravi email reply <message_id> --body "<p>Reply</p>" --cc "a@b.com" --json  # Reply with CC
+ravi email reply-all <message_id> --body "<p>Reply all</p>" --json
+ravi email forward <message_id> --to user@example.com --body "<p>FYI</p>" --json  # Forward email
 
 # Passwords (E2E encrypted website credentials)
 ravi passwords list --json               # List all entries

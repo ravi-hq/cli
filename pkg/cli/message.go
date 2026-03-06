@@ -28,11 +28,6 @@ With a message ID, shows the specific message details.`,
 			return err
 		}
 
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-
 		// If message ID provided, fetch that specific message
 		if len(args) > 0 {
 			message, err := client.GetSMSMessage(args[0])
@@ -40,7 +35,6 @@ With a message ID, shows the specific message details.`,
 				return err
 			}
 
-			message.Body = tryDecrypt(message.Body, kp)
 			output.Current.Print(message)
 			return nil
 		}
@@ -49,10 +43,6 @@ With a message ID, shows the specific message details.`,
 		messages, err := client.ListSMSMessages(messageUnreadOnly)
 		if err != nil {
 			return err
-		}
-
-		for i := range messages {
-			messages[i].Body = tryDecrypt(messages[i].Body, kp)
 		}
 
 		output.Current.Print(messages)
@@ -74,21 +64,12 @@ With a message ID, shows the specific message details.`,
 			return err
 		}
 
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-
 		// If message ID provided, fetch that specific message
 		if len(args) > 0 {
 			message, err := client.GetEmailMessage(args[0])
 			if err != nil {
 				return err
 			}
-
-			message.Subject = tryDecrypt(message.Subject, kp)
-			message.TextContent = tryDecrypt(message.TextContent, kp)
-			message.HTMLContent = tryDecrypt(message.HTMLContent, kp)
 
 			output.Current.Print(message)
 			return nil
@@ -98,12 +79,6 @@ With a message ID, shows the specific message details.`,
 		messages, err := client.ListEmailMessages(messageUnreadOnly)
 		if err != nil {
 			return err
-		}
-
-		for i := range messages {
-			messages[i].Subject = tryDecrypt(messages[i].Subject, kp)
-			messages[i].TextContent = tryDecrypt(messages[i].TextContent, kp)
-			messages[i].HTMLContent = tryDecrypt(messages[i].HTMLContent, kp)
 		}
 
 		output.Current.Print(messages)

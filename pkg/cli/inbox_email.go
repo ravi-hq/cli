@@ -40,16 +40,6 @@ func listEmailThreads(client *api.Client) error {
 		return err
 	}
 
-	kp, err := ensureKeyPair()
-	if err != nil {
-		return err
-	}
-
-	for i := range threads {
-		threads[i].Subject = tryDecrypt(threads[i].Subject, kp)
-		threads[i].Preview = tryDecrypt(threads[i].Preview, kp)
-	}
-
 	if jsonOutput {
 		return output.Current.Print(threads)
 	}
@@ -79,18 +69,6 @@ func showEmailThread(client *api.Client, threadID string) error {
 	thread, err := client.GetEmailThread(threadID)
 	if err != nil {
 		return err
-	}
-
-	kp, err := ensureKeyPair()
-	if err != nil {
-		return err
-	}
-
-	thread.Subject = tryDecrypt(thread.Subject, kp)
-	for i := range thread.Messages {
-		thread.Messages[i].Subject = tryDecrypt(thread.Messages[i].Subject, kp)
-		thread.Messages[i].TextContent = tryDecrypt(thread.Messages[i].TextContent, kp)
-		thread.Messages[i].HTMLContent = tryDecrypt(thread.Messages[i].HTMLContent, kp)
 	}
 
 	if jsonOutput {

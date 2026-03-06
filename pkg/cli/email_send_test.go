@@ -45,9 +45,9 @@ func TestComposeRequiredFlags(t *testing.T) {
 }
 
 func TestReplyRequiredFlags(t *testing.T) {
-	requiredFlags := []string{"subject", "body"}
+	expectedFlags := []string{"body"}
 	for _, cmd := range []*cobra.Command{replyCmd, replyAllCmd} {
-		for _, name := range requiredFlags {
+		for _, name := range expectedFlags {
 			flag := cmd.Flags().Lookup(name)
 			if flag == nil {
 				t.Errorf("%s command missing flag %q", cmd.Name(), name)
@@ -57,13 +57,13 @@ func TestReplyRequiredFlags(t *testing.T) {
 }
 
 func TestForwardRequiredFlags(t *testing.T) {
-	requiredFlags := []string{"to", "subject", "body"}
+	expectedFlags := []string{"to", "body"}
 	optionalFlags := []string{"cc", "bcc", "attach"}
 
-	for _, name := range requiredFlags {
+	for _, name := range expectedFlags {
 		flag := forwardCmd.Flags().Lookup(name)
 		if flag == nil {
-			t.Errorf("forward command missing required flag %q", name)
+			t.Errorf("forward command missing flag %q", name)
 		}
 	}
 	for _, name := range optionalFlags {

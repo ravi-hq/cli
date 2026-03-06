@@ -309,7 +309,6 @@ type ComposeRequest struct {
 
 // ReplyRequest is the request body for replying to an email.
 type ReplyRequest struct {
-	Subject         string   `json:"subject"`
 	Content         string   `json:"content"`
 	CC              []string `json:"cc,omitempty"`
 	BCC             []string `json:"bcc,omitempty"`
@@ -319,7 +318,6 @@ type ReplyRequest struct {
 // ForwardRequest is the request body for forwarding an email.
 type ForwardRequest struct {
 	ToEmail         string   `json:"to_email"`
-	Subject         string   `json:"subject"`
 	Content         string   `json:"content"`
 	CC              []string `json:"cc,omitempty"`
 	BCC             []string `json:"bcc,omitempty"`
