@@ -110,8 +110,7 @@ Writes to .ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json.`
 }
 
 func init() {
-	identityCreateCmd.Flags().StringVar(&identityNameFlag, "name", "", "Name for the new identity (required)")
-	identityCreateCmd.MarkFlagRequired("name")
+	identityCreateCmd.Flags().StringVar(&identityNameFlag, "name", "", "Name for the new identity (omit for auto-generated human name)")
 	identityCreateCmd.Flags().StringVar(&identityEmailFlag, "email", "", "Email address: local part (e.g. 'myagent'), full email (e.g. 'myagent@custom.com'), or omit for auto-generated")
 
 	identityCmd.AddCommand(identityListCmd)

@@ -15,7 +15,10 @@ func (c *Client) ListIdentities() ([]Identity, error) {
 // Email accepts three formats: local part only (e.g. "shopping"), full email
 // (e.g. "shopping@acme.com"), or empty string for auto-generated.
 func (c *Client) CreateIdentity(name string, email string) (*Identity, error) {
-	req := map[string]string{"name": name}
+	req := map[string]string{}
+	if name != "" {
+		req["name"] = name
+	}
 	if email != "" {
 		req["email"] = email
 	}
