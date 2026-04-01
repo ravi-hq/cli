@@ -117,16 +117,20 @@ var secretSetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		pubKeyB64 := encodePublicKey(kp)
 
-		encValue, err := crypto.Encrypt(args[1], pubKeyB64)
-		if err != nil {
-			return fmt.Errorf("encrypting value: %w", err)
+		var value string
+		if kp != nil {
+			value, err = crypto.Encrypt(args[1], encodePublicKey(kp))
+			if err != nil {
+				return fmt.Errorf("encrypting value: %w", err)
+			}
+		} else {
+			value = args[1]
 		}
 
 		entry := api.SecretEntry{
 			Key:   args[0],
-			Value: encValue,
+			Value: value,
 		}
 
 		result, err := client.CreateSecret(entry)

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1002,5 +1003,60 @@ func TestNewClient_NoAuthFile(t *testing.T) {
 	}
 	if client.auth.RefreshToken != "" {
 		t.Errorf("client.auth.RefreshToken = %v, want empty", client.auth.RefreshToken)
+	}
+}
+
+// TestParseResponse_NotFound verifies that parseResponse returns *NotFoundError for 404 status.
+func TestParseResponse_NotFound(t *testing.T) {
+	testCases := []struct {
+		name           string
+		responseBody   interface{}
+		wantDetail     string
+	}{
+		{
+			name:         "with detail field",
+			responseBody: map[string]string{"detail": "No encryption metadata found"},
+			wantDetail:   "No encryption metadata found",
+		},
+		{
+			name:         "without detail field",
+			responseBody: map[string]string{"error": "not found"},
+			wantDetail:   "", // falls back to raw body
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusNotFound)
+				json.NewEncoder(w).Encode(tc.responseBody)
+			}))
+			defer server.Close()
+
+			client := clientFromAuth(server.URL, &config.AuthConfig{})
+
+			resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
+			if err != nil {
+				t.Fatalf("doRequest() error = %v", err)
+			}
+			defer resp.Body.Close()
+
+			var result map[string]interface{}
+			err = client.parseResponse(resp, &result)
+
+			if err == nil {
+				t.Fatal("parseResponse() error = nil, want NotFoundError for 404 status")
+			}
+
+			var nfErr *NotFoundError
+			if !errors.As(err, &nfErr) {
+				t.Fatalf("parseResponse() error type = %T, want *NotFoundError", err)
+			}
+
+			if tc.wantDetail != "" && nfErr.Detail != tc.wantDetail {
+				t.Errorf("NotFoundError.Detail = %q, want %q", nfErr.Detail, tc.wantDetail)
+			}
+		})
 	}
 }

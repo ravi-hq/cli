@@ -2,8 +2,8 @@ package auth
 
 import (
 	"bufio"
-	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -133,87 +133,33 @@ func (d *DeviceFlow) Run() error {
 	return fmt.Errorf("authentication timed out")
 }
 
-// setupEncryption handles both first-time encryption setup and unlocking
-// existing encryption. On first setup, it generates a recovery key.
+// setupEncryption handles unlocking existing E2E encryption or detecting
+// plaintext users. A 404 from the encryption metadata endpoint means the
+// user does not use E2E encryption (plaintext mode).
 func (d *DeviceFlow) setupEncryption(auth *config.AuthConfig) error {
 	meta, err := d.client.GetEncryptionMeta()
 	if err != nil {
+		var nfErr *api.NotFoundError
+		if errors.As(err, &nfErr) {
+			// 404 = user is plaintext, skip encryption setup.
+			auth.PlaintextMode = true
+			auth.PINSalt = ""
+			auth.PublicKey = ""
+			auth.PrivateKey = ""
+			return nil
+		}
 		return fmt.Errorf("fetching encryption metadata: %w", err)
 	}
 
 	if meta.PublicKey == "" {
-		// First-time setup: prompt for PIN, generate keys, register with server.
-		return d.initialEncryptionSetup(auth)
+		// Server returned metadata but no public key — treat as plaintext
+		// since we no longer set up new encryption.
+		auth.PlaintextMode = true
+		return nil
 	}
 
 	// Existing encryption: prompt for PIN, verify, store keys.
 	return d.unlockExistingEncryption(auth, meta)
-}
-
-// initialEncryptionSetup creates encryption keys from a user-chosen PIN and
-// registers them with the server. Also generates and saves a recovery key.
-func (d *DeviceFlow) initialEncryptionSetup(auth *config.AuthConfig) error {
-	fmt.Println("\nSet up encryption for your vault.")
-	pin, err := crypto.PromptPIN("Choose a 6-digit encryption PIN: ")
-	if err != nil {
-		return err
-	}
-
-	// Confirm PIN.
-	confirm, err := crypto.PromptPIN("Confirm PIN: ")
-	if err != nil {
-		return err
-	}
-	if pin != confirm {
-		return fmt.Errorf("PINs do not match")
-	}
-
-	// Generate random salt (16 bytes).
-	salt := make([]byte, 16)
-	if _, err := rand.Read(salt); err != nil {
-		return fmt.Errorf("generating salt: %w", err)
-	}
-
-	// Derive keypair from PIN + salt.
-	kp, err := crypto.DeriveKeyPair(pin, salt)
-	if err != nil {
-		return fmt.Errorf("deriving keypair: %w", err)
-	}
-
-	// Create verifier (encrypted "ravi-e2e-verify" with public key).
-	verifier, err := crypto.CreateVerifier(kp)
-	if err != nil {
-		return fmt.Errorf("creating verifier: %w", err)
-	}
-
-	saltB64 := base64.StdEncoding.EncodeToString(salt)
-	pubKeyB64 := base64.StdEncoding.EncodeToString(kp.PublicKey[:])
-
-	// Save recovery key BEFORE registering with server (can be retried if it fails).
-	recoveryKey := base64.StdEncoding.EncodeToString(salt)
-	if err := config.SaveRecoveryKey(recoveryKey); err != nil {
-		return fmt.Errorf("saving recovery key: %w", err)
-	}
-
-	fmt.Fprintf(os.Stderr, "\nRecovery key saved to %s — back this up!\n", config.RecoveryKeyPath())
-
-	// Register with server (point of no return).
-	err = d.client.UpdateEncryptionMeta(map[string]string{
-		"salt":       saltB64,
-		"public_key": pubKeyB64,
-		"verifier":   verifier,
-	})
-	if err != nil {
-		return fmt.Errorf("registering encryption keys: %w", err)
-	}
-
-	// Store keys in auth config.
-	auth.PINSalt = saltB64
-	auth.PublicKey = pubKeyB64
-	auth.PrivateKey = base64.StdEncoding.EncodeToString(kp.PrivateKey[:])
-
-	output.Current.PrintMessage("Encryption set up successfully")
-	return nil
 }
 
 // unlockExistingEncryption prompts for the PIN and verifies it against

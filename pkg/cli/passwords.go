@@ -129,7 +129,6 @@ var pwCreateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		pubKeyB64 := encodePublicKey(kp)
 
 		password := pwPassword
 		if pwGenerate || password == "" {
@@ -149,24 +148,25 @@ var pwCreateCmd = &cobra.Command{
 			}
 		}
 
-		encUsername, err := crypto.Encrypt(pwUsername, pubKeyB64)
-		if err != nil {
-			return fmt.Errorf("encrypting username: %w", err)
-		}
-		encPassword, err := crypto.Encrypt(password, pubKeyB64)
-		if err != nil {
-			return fmt.Errorf("encrypting password: %w", err)
-		}
-		encNotes, err := crypto.Encrypt(pwNotes, pubKeyB64)
-		if err != nil {
-			return fmt.Errorf("encrypting notes: %w", err)
-		}
-
-		entry := api.PasswordEntry{
-			Domain:   args[0],
-			Username: encUsername,
-			Password: encPassword,
-			Notes:    encNotes,
+		entry := api.PasswordEntry{Domain: args[0]}
+		if kp != nil {
+			pubKeyB64 := encodePublicKey(kp)
+			entry.Username, err = crypto.Encrypt(pwUsername, pubKeyB64)
+			if err != nil {
+				return fmt.Errorf("encrypting username: %w", err)
+			}
+			entry.Password, err = crypto.Encrypt(password, pubKeyB64)
+			if err != nil {
+				return fmt.Errorf("encrypting password: %w", err)
+			}
+			entry.Notes, err = crypto.Encrypt(pwNotes, pubKeyB64)
+			if err != nil {
+				return fmt.Errorf("encrypting notes: %w", err)
+			}
+		} else {
+			entry.Username = pwUsername
+			entry.Password = password
+			entry.Notes = pwNotes
 		}
 
 		result, err := client.CreatePassword(entry)
@@ -197,32 +197,43 @@ var pwEditCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		pubKeyB64 := encodePublicKey(kp)
 
 		fields := map[string]interface{}{}
 		if cmd.Flags().Changed("domain") {
 			fields["domain"] = pwDomain
 		}
 		if cmd.Flags().Changed("username") {
-			enc, err := crypto.Encrypt(pwUsername, pubKeyB64)
-			if err != nil {
-				return fmt.Errorf("encrypting username: %w", err)
+			if kp != nil {
+				enc, err := crypto.Encrypt(pwUsername, encodePublicKey(kp))
+				if err != nil {
+					return fmt.Errorf("encrypting username: %w", err)
+				}
+				fields["username"] = enc
+			} else {
+				fields["username"] = pwUsername
 			}
-			fields["username"] = enc
 		}
 		if cmd.Flags().Changed("password") {
-			enc, err := crypto.Encrypt(pwPassword, pubKeyB64)
-			if err != nil {
-				return fmt.Errorf("encrypting password: %w", err)
+			if kp != nil {
+				enc, err := crypto.Encrypt(pwPassword, encodePublicKey(kp))
+				if err != nil {
+					return fmt.Errorf("encrypting password: %w", err)
+				}
+				fields["password"] = enc
+			} else {
+				fields["password"] = pwPassword
 			}
-			fields["password"] = enc
 		}
 		if cmd.Flags().Changed("notes") {
-			enc, err := crypto.Encrypt(pwNotes, pubKeyB64)
-			if err != nil {
-				return fmt.Errorf("encrypting notes: %w", err)
+			if kp != nil {
+				enc, err := crypto.Encrypt(pwNotes, encodePublicKey(kp))
+				if err != nil {
+					return fmt.Errorf("encrypting notes: %w", err)
+				}
+				fields["notes"] = enc
+			} else {
+				fields["notes"] = pwNotes
 			}
-			fields["notes"] = enc
 		}
 
 		if len(fields) == 0 {

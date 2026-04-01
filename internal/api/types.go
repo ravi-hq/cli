@@ -305,3 +305,15 @@ func (e *RateLimitError) Error() string {
 	}
 	return fmt.Sprintf("Rate limited: %s", e.Detail)
 }
+
+// NotFoundError represents a 404 Not Found response from the API.
+type NotFoundError struct {
+	Detail string `json:"detail"`
+}
+
+func (e *NotFoundError) Error() string {
+	if e.Detail != "" {
+		return fmt.Sprintf("Not found: %s", e.Detail)
+	}
+	return "Not found"
+}

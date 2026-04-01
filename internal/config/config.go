@@ -22,8 +22,9 @@ type AuthConfig struct {
 	AccessToken  string    `json:"access_token"`
 	RefreshToken string    `json:"refresh_token"`
 	ExpiresAt    time.Time `json:"expires_at"`
-	UserEmail    string    `json:"user_email,omitempty"`
-	PINSalt      string    `json:"pin_salt,omitempty"`
+	UserEmail     string    `json:"user_email,omitempty"`
+	PlaintextMode bool     `json:"plaintext_mode,omitempty"`
+	PINSalt       string   `json:"pin_salt,omitempty"`
 	PublicKey    string    `json:"public_key,omitempty"`
 	PrivateKey   string    `json:"private_key,omitempty"`
 }

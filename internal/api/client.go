@@ -171,6 +171,14 @@ func (c *Client) parseResponse(resp *http.Response, result interface{}) error {
 		return &rlErr
 	}
 
+	if resp.StatusCode == http.StatusNotFound {
+		var nfErr NotFoundError
+		if json.Unmarshal(bodyBytes, &nfErr) == nil && nfErr.Detail != "" {
+			return &nfErr
+		}
+		return &NotFoundError{Detail: string(bodyBytes)}
+	}
+
 	if resp.StatusCode >= 400 {
 		var apiErr Error
 		if json.Unmarshal(bodyBytes, &apiErr) == nil && apiErr.Detail != "" {

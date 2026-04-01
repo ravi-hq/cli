@@ -18,6 +18,11 @@ func ensureKeyPair() (*crypto.KeyPair, error) {
 		return nil, fmt.Errorf("loading auth: %w", err)
 	}
 
+	// Plaintext user — no encryption needed.
+	if cfg.PlaintextMode {
+		return nil, nil
+	}
+
 	if cfg.PrivateKey == "" || cfg.PublicKey == "" {
 		if cfg.AccessToken != "" {
 			return nil, fmt.Errorf("encryption not set up — complete PIN setup on the dashboard first")
@@ -53,6 +58,9 @@ func ensureKeyPair() (*crypto.KeyPair, error) {
 // to stderr and the original (encrypted) value is returned so the caller
 // always has something to display.
 func tryDecrypt(value string, kp *crypto.KeyPair) string {
+	if kp == nil {
+		return value
+	}
 	result, err := crypto.DecryptField(value, kp)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not decrypt field: %v\n", err)

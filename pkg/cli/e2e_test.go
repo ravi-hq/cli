@@ -289,3 +289,40 @@ func TestEnsureKeyPair_BothKeysInvalid(t *testing.T) {
 		t.Errorf("ensureKeyPair() error = %v, want error containing 'decoding private key'", err)
 	}
 }
+
+// TestEnsureKeyPair_PlaintextMode verifies that a plaintext user (PlaintextMode=true)
+// gets (nil, nil) from ensureKeyPair — no error, no keypair.
+func TestEnsureKeyPair_PlaintextMode(t *testing.T) {
+	tmpDir, cleanup := withTempHome(t)
+	defer cleanup()
+
+	saveTestAuth(t, tmpDir, &config.AuthConfig{
+		AccessToken:   "some-valid-token",
+		PlaintextMode: true,
+	})
+
+	kp, err := ensureKeyPair()
+	if err != nil {
+		t.Fatalf("ensureKeyPair() error = %v, want nil for plaintext user", err)
+	}
+	if kp != nil {
+		t.Fatal("ensureKeyPair() returned non-nil KeyPair, want nil for plaintext user")
+	}
+}
+
+// TestTryDecrypt_NilKeyPair verifies that tryDecrypt returns the value
+// unchanged when the keypair is nil (plaintext user).
+func TestTryDecrypt_NilKeyPair(t *testing.T) {
+	// Plaintext value should pass through unchanged.
+	plain := "hello world"
+	if got := tryDecrypt(plain, nil); got != plain {
+		t.Errorf("tryDecrypt(%q, nil) = %q, want %q", plain, got, plain)
+	}
+
+	// Even an e2e-prefixed value should pass through unchanged with nil kp
+	// (no decryption attempted).
+	encrypted := "e2e::c29tZWJhc2U2NA=="
+	if got := tryDecrypt(encrypted, nil); got != encrypted {
+		t.Errorf("tryDecrypt(%q, nil) = %q, want %q", encrypted, got, encrypted)
+	}
+}
