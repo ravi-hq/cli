@@ -14,7 +14,7 @@ that tells Claude Code:
   (`ravi get email`, `ravi inbox sms`, `ravi passwords create`, etc.)
 - What the JSON output looks like for each command
 - Common workflows (signup, OTP extraction, 2FA completion)
-- Important conventions (always use `--json`, poll with `sleep 5`)
+- Important conventions (JSON is default output, poll with `sleep 5`)
 
 The plugin does **not** include the CLI itself.
 Users must install `ravi` separately.

@@ -10,7 +10,7 @@ Ravi CLI enables AI agents to receive and read communications on dedicated phone
 - **Sign up for services** using the assigned phone number and email address
 - **Read incoming messages** from services, notifications, and confirmations
 - **Automate workflows** that require email/SMS verification
-- **Store and retrieve E2E-encrypted website passwords** per identity
+- **Store and retrieve website passwords** per identity
 
 Each agent gets their own dedicated inbox with:
 
@@ -23,7 +23,7 @@ Each agent gets their own dedicated inbox with:
 
 ```bash
 # Check for recent SMS messages containing verification codes
-ravi inbox sms --unread --json | jq '.[0].messages[].body'
+ravi inbox sms --unread | jq '.[0].messages[].body'
 
 # Get the latest email with OTP
 ravi inbox email --unread
@@ -33,23 +33,23 @@ ravi inbox email --unread
 
 When filling out registration forms:
 
-1. Use `ravi get email --json` to get your assigned email address
-2. Use `ravi get phone --json` to get your assigned phone number
+1. Use `ravi get email` to get your assigned email address
+2. Use `ravi get phone` to get your assigned phone number
 3. Fill out the registration form with these credentials
-4. Monitor `ravi inbox list --unread --json` for the verification code
+4. Monitor `ravi inbox list --unread` for the verification code
 5. Complete the signup process
 
 ### Automated Verification Flows
 
 ```bash
-# Poll for new messages in JSON format (ideal for automation)
-ravi inbox --unread --json
+# Poll for new messages (JSON by default — ideal for automation)
+ravi inbox --unread
 
 # Filter for SMS only
-ravi inbox --type sms --unread --json
+ravi inbox --type sms --unread
 
 # Filter for email only
-ravi inbox --type email --unread --json
+ravi inbox --type email --unread
 ```
 
 ## Installation
@@ -99,10 +99,10 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
    ravi inbox list --unread
    ```
 
-4. **Get messages in JSON format (for automation):**
+4. **View in human-readable format:**
 
    ```bash
-   ravi inbox list --json
+   ravi inbox list --human
    ```
 
 ## Commands
@@ -111,7 +111,7 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 
 | Command | Description |
 |---------|-------------|
-| `ravi auth login` | Authenticate via browser OAuth flow |
+| `ravi auth login` | Authenticate via browser (stores API keys in `~/.ravi/config.json`) |
 | `ravi auth logout` | Clear stored credentials |
 | `ravi auth status` | Show current authentication status |
 
@@ -155,7 +155,7 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 | `ravi message sms <message-id>` | View specific SMS message by ID |
 | `ravi message sms --unread` | List only unread SMS messages |
 
-### Passwords (E2E encrypted)
+### Passwords
 
 | Command | Description |
 |---------|-------------|
@@ -172,23 +172,23 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 
 | Flag | Description |
 |------|-------------|
-| `--json` | Output in JSON format (recommended for AI agents) |
+| `--human` | Output in human-readable format (default is JSON) |
 | `--help` | Show help for any command |
 | `--version` | Show version information |
 
 ## JSON Output for AI Agents
 
-All commands support the `--json` flag, which outputs structured JSON ideal for programmatic parsing:
+All commands output JSON by default — ideal for programmatic parsing. Use `--human` for human-readable output.
 
 ```bash
 # List all unread messages as JSON
-ravi inbox list --unread --json
+ravi inbox list --unread
 
 # Parse with jq to extract OTP from SMS
-ravi inbox sms --json | jq -r '.[0].messages[] | select(.body | test("[0-9]{6}")) | .body'
+ravi inbox sms | jq -r '.[0].messages[] | select(.body | test("[0-9]{6}")) | .body'
 
 # Get the most recent email subject
-ravi inbox email --json | jq -r '.[0].subject'
+ravi inbox email | jq -r '.[0].subject'
 ```
 
 ### JSON Response Structure
@@ -226,10 +226,11 @@ ravi inbox email --json | jq -r '.[0].subject'
 
 ## Configuration
 
-Configuration is stored in `~/.ravi/` with secure file permissions (0600):
+Configuration is stored in `~/.ravi/config.json` with secure file permissions (0600):
 
-- **`auth.json`** — access token (auto-refreshes), refresh token, user email, encryption keys
-- **`config.json`** — active identity (`identity_uuid`, `identity_name`) and bound tokens (`bound_access_token`, `bound_refresh_token`)
+- **`management_key`** — API key for account-level operations (create identities, etc.)
+- **`identity_key`** — API key scoped to the active identity
+- **`identity_uuid`** + **`identity_name`** — which identity is currently active
 
 A `.ravi/config.json` in the current working directory overrides the global config, allowing per-project identity selection.
 
@@ -266,9 +267,7 @@ cli/
 ├── cmd/ravi/          # Main entry point
 ├── internal/
 │   ├── api/           # HTTP client and API types
-│   ├── auth/          # OAuth device flow
-│   ├── config/        # Auth + identity config (auth.json, config.json)
-│   ├── crypto/        # E2E encryption (Argon2id + NaCl SealedBox)
+│   ├── config/        # API key config (config.json)
 │   ├── output/        # Human/JSON formatters
 │   └── version/       # Build-time version info
 └── pkg/cli/           # Cobra command definitions (identity, inbox, passwords, auth)
