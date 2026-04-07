@@ -145,26 +145,33 @@ func (d *DeviceFlow) handleLogin(tokenResp *api.DeviceTokenResponse) error {
 		return nil
 	}
 
-	fmt.Println("\nSelect an identity:")
-	for i, id := range identities {
-		fmt.Printf("  %d) %s\n", i+1, identityLabel(id))
-	}
-	fmt.Print("> ")
+	var selected api.Identity
 
-	reader := bufio.NewReader(os.Stdin)
-	line, err := reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("reading input: %w", err)
+	if len(identities) == 1 {
+		selected = identities[0]
+		output.Current.PrintMessage(fmt.Sprintf("Using identity: %s", identityLabel(selected)))
+	} else {
+		fmt.Println("\nSelect an identity:")
+		for i, id := range identities {
+			fmt.Printf("  %d) %s\n", i+1, identityLabel(id))
+		}
+		fmt.Print("> ")
+
+		reader := bufio.NewReader(os.Stdin)
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("reading input: %w", err)
+		}
+		trimmed := strings.TrimSpace(line)
+		choice, err := strconv.Atoi(trimmed)
+		if err != nil {
+			return fmt.Errorf("invalid selection %q — enter a number between 1 and %d", trimmed, len(identities))
+		}
+		if choice < 1 || choice > len(identities) {
+			return fmt.Errorf("selection %d out of range — enter a number between 1 and %d", choice, len(identities))
+		}
+		selected = identities[choice-1]
 	}
-	trimmed := strings.TrimSpace(line)
-	choice, err := strconv.Atoi(trimmed)
-	if err != nil {
-		return fmt.Errorf("invalid selection %q — enter a number between 1 and %d", trimmed, len(identities))
-	}
-	if choice < 1 || choice > len(identities) {
-		return fmt.Errorf("selection %d out of range — enter a number between 1 and %d", choice, len(identities))
-	}
-	selected := identities[choice-1]
 
 	// Create identity key via management key.
 	mgmtClient, err := api.NewUnauthenticatedClient()
