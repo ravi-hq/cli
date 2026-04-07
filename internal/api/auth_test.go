@@ -249,3 +249,133 @@ func TestPollForToken_InvalidCode(t *testing.T) {
 		t.Errorf("PollForToken() errorCode = %q, want %q", errorCode, "invalid_grant")
 	}
 }
+
+// TestPollForToken_UnexpectedStatus verifies handling of unexpected HTTP status codes.
+func TestPollForToken_UnexpectedStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("server error"))
+	}))
+	defer server.Close()
+
+	client := setupTestClient(t, server.URL)
+
+	_, _, err := client.PollForToken("some-code")
+	if err == nil {
+		t.Fatal("PollForToken() error = nil, want error for 500 status")
+	}
+	if !strings.Contains(err.Error(), "unexpected status code: 500") {
+		t.Errorf("Error = %q, want to contain 'unexpected status code: 500'", err.Error())
+	}
+}
+
+// TestPollForToken_BadRequestMalformedJSON verifies handling of malformed JSON in 400 response.
+func TestPollForToken_BadRequestMalformedJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("not json"))
+	}))
+	defer server.Close()
+
+	client := setupTestClient(t, server.URL)
+
+	_, _, err := client.PollForToken("some-code")
+	if err == nil {
+		t.Fatal("PollForToken() error = nil, want error for malformed 400 response")
+	}
+	if !strings.Contains(err.Error(), "polling failed") {
+		t.Errorf("Error = %q, want to contain 'polling failed'", err.Error())
+	}
+}
+
+// TestPollForToken_SendsWaitTrue verifies that the request body includes wait: true.
+func TestPollForToken_SendsWaitTrue(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody DeviceTokenRequest
+		json.NewDecoder(r.Body).Decode(&reqBody)
+		if !reqBody.Wait {
+			t.Errorf("Wait = %v, want true", reqBody.Wait)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(DeviceTokenResponse{
+			ManagementKey: "ravi_mgmt_test",
+			User:          User{Email: "test@example.com"},
+		})
+	}))
+	defer server.Close()
+
+	client := setupTestClient(t, server.URL)
+	_, _, _ = client.PollForToken("test-code")
+}
+
+// TestCreateIdentityKey_Success verifies creating an identity key.
+func TestCreateIdentityKey_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST, got %s", r.Method)
+		}
+		if r.URL.Path != PathIdentityKeys {
+			t.Errorf("Expected path %s, got %s", PathIdentityKeys, r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer ravi_mgmt_test" {
+			t.Errorf("Expected management key in auth header, got %s", r.Header.Get("Authorization"))
+		}
+
+		var req CreateIdentityKeyRequest
+		json.NewDecoder(r.Body).Decode(&req)
+		if req.IdentityUUID != "uuid-123" {
+			t.Errorf("IdentityUUID = %q, want %q", req.IdentityUUID, "uuid-123")
+		}
+		if req.Label != "cli" {
+			t.Errorf("Label = %q, want %q", req.Label, "cli")
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(CreateIdentityKeyResponse{
+			Key:          "ravi_id_new_key",
+			IdentityUUID: "uuid-123",
+			Label:        "cli",
+		})
+	}))
+	defer server.Close()
+
+	client := &Client{
+		httpClient: &http.Client{Timeout: 5 * time.Second},
+		baseURL:    strings.TrimSuffix(server.URL, "/"),
+		apiKey:     "ravi_mgmt_test",
+	}
+
+	result, err := client.CreateIdentityKey("uuid-123", "cli")
+	if err != nil {
+		t.Fatalf("CreateIdentityKey() error = %v", err)
+	}
+	if result.Key != "ravi_id_new_key" {
+		t.Errorf("Key = %q, want %q", result.Key, "ravi_id_new_key")
+	}
+	if result.IdentityUUID != "uuid-123" {
+		t.Errorf("IdentityUUID = %q, want %q", result.IdentityUUID, "uuid-123")
+	}
+}
+
+// TestCreateIdentityKey_Error verifies error handling for CreateIdentityKey.
+func TestCreateIdentityKey_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Error{Detail: "Identity not found"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	result, err := client.CreateIdentityKey("bad-uuid", "cli")
+	if err == nil {
+		t.Fatal("CreateIdentityKey() error = nil, want error")
+	}
+	if result != nil {
+		t.Errorf("CreateIdentityKey() result = %v, want nil on error", result)
+	}
+}

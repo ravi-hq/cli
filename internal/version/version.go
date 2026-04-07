@@ -1,9 +1,6 @@
 package version
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
 // Build-time information injected via ldflags.
 // Example:
@@ -13,7 +10,7 @@ var (
 	Version    = "dev"
 	Commit     = "unknown"
 	BuildDate  = "unknown"
-	APIBaseURL = "" // Required, no default - must be set at build time
+	APIBaseURL = "" // Overridden at build time; defaults to https://ravi.id
 )
 
 // Info returns formatted version information for display.
@@ -22,10 +19,10 @@ func Info() string {
 }
 
 // GetAPIBaseURL returns the configured API base URL.
-// Returns an error if the URL was not set at build time.
+// Falls back to https://ravi.id if not set at build time.
 func GetAPIBaseURL() (string, error) {
 	if APIBaseURL == "" {
-		return "", errors.New("API URL not configured. Binary must be built with: make build API_URL=<url>")
+		return "https://ravi.id", nil
 	}
 	return APIBaseURL, nil
 }

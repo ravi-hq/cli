@@ -61,7 +61,7 @@ func (d *DeviceFlow) Run() error {
 	fmt.Println()
 
 	// Try to open browser
-	if err := openBrowser(codeResp.VerificationURI + "?user_code=" + codeResp.UserCode); err != nil {
+	if err := OpenBrowser(codeResp.VerificationURI + "?user_code=" + codeResp.UserCode); err != nil {
 		// Not a fatal error, user can manually visit URL
 		fmt.Println("(Could not open browser automatically)")
 	}
@@ -224,8 +224,11 @@ func identityLabel(id api.Identity) string {
 	return id.Name
 }
 
-// openBrowser opens the default browser to the given URL
-func openBrowser(url string) error {
+// OpenBrowser opens the default browser to the given URL.
+// Exported as a variable so tests can replace it with a no-op.
+var OpenBrowser = openBrowserImpl
+
+func openBrowserImpl(url string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":

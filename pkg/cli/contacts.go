@@ -36,7 +36,7 @@ var ctListCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(entries)
 		}
 
@@ -77,7 +77,7 @@ var ctSearchCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(entries)
 		}
 
@@ -118,7 +118,7 @@ var ctGetCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(entry)
 		}
 
@@ -158,7 +158,7 @@ var ctCreateCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(result)
 		}
 
@@ -203,7 +203,7 @@ var ctEditCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(result)
 		}
 
@@ -226,7 +226,7 @@ var ctDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(map[string]string{"status": "deleted"})
 		}
 

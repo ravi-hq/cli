@@ -205,6 +205,76 @@ func TestDeleteSecret_Success(t *testing.T) {
 	}
 }
 
+func TestListSecrets_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(Error{Detail: "Error"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.ListSecrets()
+	if err == nil {
+		t.Fatal("ListSecrets() error = nil, want error")
+	}
+}
+
+func TestGetSecret_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(Error{Detail: "Error"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.GetSecret("SOME_KEY")
+	if err == nil {
+		t.Fatal("GetSecret() error = nil, want error")
+	}
+}
+
+func TestGetSecretByUUID_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Error{Detail: "Not found"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.GetSecretByUUID("bad-uuid")
+	if err == nil {
+		t.Fatal("GetSecretByUUID() error = nil, want error")
+	}
+}
+
+func TestCreateSecret_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Error{Detail: "Validation error"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.CreateSecret(SecretEntry{})
+	if err == nil {
+		t.Fatal("CreateSecret() error = nil, want error")
+	}
+}
+
+func TestUpdateSecret_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Error{Detail: "Not found"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.UpdateSecret("bad", map[string]interface{}{})
+	if err == nil {
+		t.Fatal("UpdateSecret() error = nil, want error")
+	}
+}
+
 func TestDeleteSecret_NotFound(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

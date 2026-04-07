@@ -40,7 +40,7 @@ var pwListCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(entries)
 		}
 
@@ -79,7 +79,7 @@ var pwGetCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(entry)
 		}
 
@@ -135,7 +135,7 @@ var pwCreateCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(result)
 		}
 
@@ -177,7 +177,7 @@ var pwEditCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(result)
 		}
 
@@ -200,7 +200,7 @@ var pwDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(map[string]string{"status": "deleted"})
 		}
 
@@ -230,7 +230,7 @@ var pwGenerateCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(gen)
 		}
 

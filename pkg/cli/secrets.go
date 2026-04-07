@@ -27,7 +27,7 @@ var secretListCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(entries)
 		}
 
@@ -69,7 +69,7 @@ var secretGetCmd = &cobra.Command{
 			return fmt.Errorf("secret not found: %s", args[0])
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(entry)
 		}
 
@@ -115,7 +115,7 @@ var secretSetCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(result)
 		}
 
@@ -138,7 +138,7 @@ var secretDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		if jsonOutput {
+		if !humanOutput {
 			return output.Current.Print(map[string]string{"status": "deleted"})
 		}
 

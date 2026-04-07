@@ -59,8 +59,8 @@ func TestGetAPIBaseURL_Set(t *testing.T) {
 	}
 }
 
-// TestGetAPIBaseURL_NotSet verifies that GetAPIBaseURL returns an error
-// when APIBaseURL is not configured (empty string).
+// TestGetAPIBaseURL_NotSet verifies that GetAPIBaseURL falls back to
+// the default URL when APIBaseURL is not configured (empty string).
 func TestGetAPIBaseURL_NotSet(t *testing.T) {
 	// Save original value and restore after test
 	original := APIBaseURL
@@ -69,18 +69,13 @@ func TestGetAPIBaseURL_NotSet(t *testing.T) {
 	APIBaseURL = ""
 
 	got, err := GetAPIBaseURL()
-	if err == nil {
-		t.Fatal("GetAPIBaseURL() expected error when APIBaseURL is empty, got nil")
+	if err != nil {
+		t.Fatalf("GetAPIBaseURL() unexpected error = %v", err)
 	}
 
-	// Verify the returned URL is empty
-	if got != "" {
-		t.Errorf("GetAPIBaseURL() = %v, want empty string on error", got)
-	}
-
-	// Verify the error message is helpful
-	if !strings.Contains(err.Error(), "API URL not configured") {
-		t.Errorf("GetAPIBaseURL() error message should mention 'API URL not configured', got: %v", err)
+	want := "https://ravi.id"
+	if got != want {
+		t.Errorf("GetAPIBaseURL() = %v, want %v", got, want)
 	}
 }
 

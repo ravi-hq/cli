@@ -321,6 +321,84 @@ func TestSaveGlobalConfig_DirectoryPermissions(t *testing.T) {
 	}
 }
 
+func TestDir_NoHome(t *testing.T) {
+	var homeEnvVar string
+	if runtime.GOOS == "windows" {
+		homeEnvVar = "USERPROFILE"
+	} else {
+		homeEnvVar = "HOME"
+	}
+	original := os.Getenv(homeEnvVar)
+	os.Unsetenv(homeEnvVar)
+	defer os.Setenv(homeEnvVar, original)
+
+	dir := Dir()
+	if !strings.HasSuffix(dir, ".ravi") {
+		t.Errorf("Dir() = %v, want suffix .ravi", dir)
+	}
+}
+
+func TestSaveConfig_OverwritesCWDConfig(t *testing.T) {
+	_, cleanup := withTempHome(t)
+	defer cleanup()
+
+	tmpProject := t.TempDir()
+	localDir := filepath.Join(tmpProject, ".ravi")
+	os.MkdirAll(localDir, 0700)
+	os.WriteFile(filepath.Join(localDir, "config.json"), []byte(`{"management_key":"old"}`), 0600)
+
+	origWD, _ := os.Getwd()
+	os.Chdir(tmpProject)
+	defer os.Chdir(origWD)
+
+	cfg := &Config{ManagementKey: "new-key", IdentityKey: "new-id"}
+	if err := SaveConfig(cfg); err != nil {
+		t.Fatalf("SaveConfig() error = %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(localDir, "config.json"))
+	if err != nil {
+		t.Fatalf("ReadFile error = %v", err)
+	}
+	var loaded Config
+	json.Unmarshal(data, &loaded)
+	if loaded.ManagementKey != "new-key" {
+		t.Errorf("ManagementKey = %v, want new-key", loaded.ManagementKey)
+	}
+}
+
+func TestClearAll_NothingToRemove(t *testing.T) {
+	_, cleanup := withTempHome(t)
+	defer cleanup()
+
+	// ClearAll should succeed even when there's nothing to remove.
+	if err := ClearAll(); err != nil {
+		t.Fatalf("ClearAll() error = %v", err)
+	}
+}
+
+func TestSaveGlobalConfig_CreatesDirIfNotExists(t *testing.T) {
+	tmpDir, cleanup := withTempHome(t)
+	defer cleanup()
+
+	raviDir := filepath.Join(tmpDir, ".ravi")
+	// Ensure it doesn't exist
+	os.RemoveAll(raviDir)
+
+	if err := SaveGlobalConfig(&Config{ManagementKey: "test"}); err != nil {
+		t.Fatalf("SaveGlobalConfig() error = %v", err)
+	}
+
+	// Verify the directory was created
+	info, err := os.Stat(raviDir)
+	if err != nil {
+		t.Fatalf("Stat error: %v", err)
+	}
+	if !info.IsDir() {
+		t.Errorf("Expected %s to be a directory", raviDir)
+	}
+}
+
 func TestSaveGlobalConfig_FilePermissions(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
@@ -334,5 +412,131 @@ func TestSaveGlobalConfig_FilePermissions(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0600 {
 		t.Errorf("File permissions = %o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestSaveGlobalConfig_ReadOnlyDir(t *testing.T) {
+	tmpDir, cleanup := withTempHome(t)
+	defer cleanup()
+
+	// Create the .ravi dir as read-only so writing the config file fails.
+	raviDir := filepath.Join(tmpDir, ".ravi")
+	os.MkdirAll(raviDir, 0700)
+	os.Chmod(raviDir, 0500)
+	defer os.Chmod(raviDir, 0700) // restore for cleanup
+
+	err := SaveGlobalConfig(&Config{ManagementKey: "test"})
+	if err == nil {
+		t.Fatal("SaveGlobalConfig() error = nil, want error for read-only dir")
+	}
+}
+
+func TestSaveGlobalConfig_MkdirAllFails(t *testing.T) {
+	tmpDir, cleanup := withTempHome(t)
+	defer cleanup()
+
+	// Make the HOME directory read-only so MkdirAll can't create .ravi.
+	os.RemoveAll(filepath.Join(tmpDir, ".ravi"))
+	os.Chmod(tmpDir, 0500)
+	defer os.Chmod(tmpDir, 0700)
+
+	err := SaveGlobalConfig(&Config{ManagementKey: "test"})
+	if err == nil {
+		t.Fatal("SaveGlobalConfig() error = nil, want error for MkdirAll failure")
+	}
+}
+
+func TestSaveConfig_ReadOnlyFile(t *testing.T) {
+	_, cleanup := withTempHome(t)
+	defer cleanup()
+
+	// Create a CWD with an immutable config file.
+	tmpProject := t.TempDir()
+	localDir := filepath.Join(tmpProject, ".ravi")
+	os.MkdirAll(localDir, 0700)
+	configPath := filepath.Join(localDir, "config.json")
+	os.WriteFile(configPath, []byte(`{}`), 0600)
+
+	origWD, _ := os.Getwd()
+	os.Chdir(tmpProject)
+	defer os.Chdir(origWD)
+
+	// Make the dir read-only so WriteFile fails.
+	os.Chmod(localDir, 0500)
+	defer os.Chmod(localDir, 0700)
+
+	err := SaveConfig(&Config{ManagementKey: "test"})
+	// On macOS/Linux with a read-only dir, WriteFile to existing file may fail.
+	// Either way, no panic should occur.
+	_ = err
+}
+
+func TestSaveConfig_StatError(t *testing.T) {
+	_, cleanup := withTempHome(t)
+	defer cleanup()
+
+	// Create a CWD with a .ravi directory that has no execute permission.
+	// This causes os.Stat on files inside it to return EACCES (not ENOENT),
+	// triggering the "checking project config" error branch.
+	tmpProject := t.TempDir()
+	localDir := filepath.Join(tmpProject, ".ravi")
+	os.MkdirAll(localDir, 0700)
+	os.WriteFile(filepath.Join(localDir, "config.json"), []byte(`{}`), 0600)
+
+	origWD, _ := os.Getwd()
+	os.Chdir(tmpProject)
+	defer os.Chdir(origWD)
+
+	// Remove execute permission — stat of files inside will fail with EACCES.
+	os.Chmod(localDir, 0200)
+	defer os.Chmod(localDir, 0700)
+
+	err := SaveConfig(&Config{ManagementKey: "test"})
+	if err == nil {
+		t.Fatal("SaveConfig() error = nil, want error for stat failure")
+	}
+	if !strings.Contains(err.Error(), "checking project config") {
+		t.Errorf("error = %v, want it to contain 'checking project config'", err)
+	}
+}
+
+func TestLoadConfig_CWDCorruptFile(t *testing.T) {
+	_, cleanup := withTempHome(t)
+	defer cleanup()
+
+	// Create a project directory with corrupt CWD config.
+	tmpProject := t.TempDir()
+	localDir := filepath.Join(tmpProject, ".ravi")
+	os.MkdirAll(localDir, 0700)
+	os.WriteFile(filepath.Join(localDir, "config.json"), []byte("not json at all"), 0600)
+
+	origWD, _ := os.Getwd()
+	os.Chdir(tmpProject)
+	defer os.Chdir(origWD)
+
+	_, err := LoadConfig()
+	if err == nil {
+		t.Error("LoadConfig() error = nil, want error for corrupt CWD config file")
+	}
+}
+
+func TestClearAll_RemovesCWDConfig(t *testing.T) {
+	tmpDir, cleanup := withTempHome(t)
+	defer cleanup()
+
+	// Create global config.
+	SaveGlobalConfig(&Config{ManagementKey: "key"})
+
+	raviDir := filepath.Join(tmpDir, ".ravi")
+	if _, err := os.Stat(raviDir); os.IsNotExist(err) {
+		t.Fatal("Expected .ravi to exist before ClearAll")
+	}
+
+	if err := ClearAll(); err != nil {
+		t.Fatalf("ClearAll() error = %v", err)
+	}
+
+	if _, err := os.Stat(raviDir); !os.IsNotExist(err) {
+		t.Error("Expected .ravi to be removed after ClearAll")
 	}
 }

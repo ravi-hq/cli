@@ -151,7 +151,8 @@ func TestNewClient_FallsBackToManagementKey(t *testing.T) {
 	}
 }
 
-// TestNewClient_NoAPIURL verifies that NewClient returns an error when API URL is not configured.
+// TestNewClient_NoAPIURL verifies that NewClient falls back to the default URL
+// when API URL is not explicitly configured.
 func TestNewClient_NoAPIURL(t *testing.T) {
 	cleanupURL := withAPIBaseURL(t, "")
 	defer cleanupURL()
@@ -160,16 +161,16 @@ func TestNewClient_NoAPIURL(t *testing.T) {
 	defer cleanupHome()
 
 	client, err := NewClient()
-	if err == nil {
-		t.Fatal("NewClient() error = nil, want error when API URL not configured")
+	if err != nil {
+		t.Fatalf("NewClient() unexpected error = %v", err)
 	}
 
-	if client != nil {
-		t.Errorf("NewClient() client = %v, want nil on error", client)
+	if client == nil {
+		t.Fatal("NewClient() client = nil, want non-nil")
 	}
 
-	if !strings.Contains(err.Error(), "API URL not configured") {
-		t.Errorf("NewClient() error = %v, want error containing 'API URL not configured'", err)
+	if !strings.Contains(client.baseURL, "ravi.id") {
+		t.Errorf("client.baseURL = %v, want to contain 'ravi.id'", client.baseURL)
 	}
 }
 
@@ -609,6 +610,217 @@ func TestDoRequest_HTTPMethods(t *testing.T) {
 				t.Errorf("Request method = %v, want %v", receivedMethod, method)
 			}
 		})
+	}
+}
+
+// TestNewManagementClient_Success verifies NewManagementClient uses the management key.
+func TestNewManagementClient_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cleanupURL := withAPIBaseURL(t, server.URL)
+	defer cleanupURL()
+
+	_, cleanupHome := withTempHome(t)
+	defer cleanupHome()
+
+	cfg := &config.Config{
+		ManagementKey: "ravi_mgmt_test123",
+		IdentityKey:   "ravi_id_test456",
+		UserEmail:     "test@example.com",
+	}
+	setupTestConfig(t, cfg)
+
+	client, err := NewManagementClient()
+	if err != nil {
+		t.Fatalf("NewManagementClient() error = %v", err)
+	}
+
+	// Should use management key, not identity key
+	if client.apiKey != cfg.ManagementKey {
+		t.Errorf("client.apiKey = %v, want %v (management key)", client.apiKey, cfg.ManagementKey)
+	}
+	if client.userEmail != cfg.UserEmail {
+		t.Errorf("client.userEmail = %v, want %v", client.userEmail, cfg.UserEmail)
+	}
+}
+
+// TestNewManagementClient_NoAPIURL verifies that ManagementClient falls back to
+// the default URL when API URL is not explicitly configured.
+func TestNewManagementClient_NoAPIURL(t *testing.T) {
+	cleanupURL := withAPIBaseURL(t, "")
+	defer cleanupURL()
+
+	_, cleanupHome := withTempHome(t)
+	defer cleanupHome()
+
+	client, err := NewManagementClient()
+	if err != nil {
+		t.Fatalf("NewManagementClient() unexpected error = %v", err)
+	}
+
+	if client == nil {
+		t.Fatal("NewManagementClient() client = nil, want non-nil")
+	}
+
+	if !strings.Contains(client.baseURL, "ravi.id") {
+		t.Errorf("client.baseURL = %v, want to contain 'ravi.id'", client.baseURL)
+	}
+}
+
+// TestNewUnauthenticatedClient_Success verifies unauthenticated client creation.
+func TestNewUnauthenticatedClient_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cleanupURL := withAPIBaseURL(t, server.URL)
+	defer cleanupURL()
+
+	client, err := NewUnauthenticatedClient()
+	if err != nil {
+		t.Fatalf("NewUnauthenticatedClient() error = %v", err)
+	}
+
+	if client.apiKey != "" {
+		t.Errorf("client.apiKey = %v, want empty", client.apiKey)
+	}
+	if !strings.Contains(client.baseURL, server.URL) {
+		t.Errorf("client.baseURL = %v, want to contain %v", client.baseURL, server.URL)
+	}
+}
+
+// TestNewUnauthenticatedClient_NoAPIURL verifies that unauthenticated client falls back to
+// the default URL when API URL is not explicitly configured.
+func TestNewUnauthenticatedClient_NoAPIURL(t *testing.T) {
+	cleanupURL := withAPIBaseURL(t, "")
+	defer cleanupURL()
+
+	client, err := NewUnauthenticatedClient()
+	if err != nil {
+		t.Fatalf("NewUnauthenticatedClient() unexpected error = %v", err)
+	}
+
+	if client == nil {
+		t.Fatal("NewUnauthenticatedClient() client = nil, want non-nil")
+	}
+
+	if !strings.Contains(client.baseURL, "ravi.id") {
+		t.Errorf("client.baseURL = %v, want to contain 'ravi.id'", client.baseURL)
+	}
+}
+
+// TestDoAuthenticatedRequest_Success verifies doAuthenticatedRequest works.
+func TestDoAuthenticatedRequest_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer ravi_id_testkey" {
+			t.Errorf("Authorization = %v, want Bearer ravi_id_testkey", r.Header.Get("Authorization"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	defer server.Close()
+
+	client := clientFromConfig(server.URL, "ravi_id_testkey")
+
+	var result map[string]string
+	err := client.doAuthenticatedRequest(http.MethodGet, "/test", nil, &result)
+	if err != nil {
+		t.Fatalf("doAuthenticatedRequest() error = %v", err)
+	}
+	if result["status"] != "ok" {
+		t.Errorf("result[status] = %v, want ok", result["status"])
+	}
+}
+
+// TestDoAuthenticatedRequest_Error verifies doAuthenticatedRequest propagates errors.
+func TestDoAuthenticatedRequest_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(Error{Detail: "Permission denied"})
+	}))
+	defer server.Close()
+
+	client := clientFromConfig(server.URL, "ravi_id_testkey")
+
+	var result map[string]string
+	err := client.doAuthenticatedRequest(http.MethodGet, "/test", nil, &result)
+	if err == nil {
+		t.Fatal("doAuthenticatedRequest() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "Permission denied") {
+		t.Errorf("Error = %q, want to contain 'Permission denied'", err.Error())
+	}
+}
+
+// TestParseResponse_RateLimitFallbackHeader verifies that parseResponse uses Retry-After header
+// when the body doesn't contain retry_after_seconds.
+func TestParseResponse_RateLimitFallbackHeader(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "30")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		// Body has detail but no retry_after_seconds
+		json.NewEncoder(w).Encode(map[string]string{"detail": "Slow down"})
+	}))
+	defer server.Close()
+
+	client := clientFromConfig(server.URL, "")
+
+	resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
+	if err != nil {
+		t.Fatalf("doRequest() error = %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	err = client.parseResponse(resp, &result)
+	if err == nil {
+		t.Fatal("parseResponse() error = nil, want RateLimitError")
+	}
+
+	rlErr, ok := err.(*RateLimitError)
+	if !ok {
+		t.Fatalf("error type = %T, want *RateLimitError", err)
+	}
+	if rlErr.RetryAfterSeconds != 30 {
+		t.Errorf("RetryAfterSeconds = %d, want 30 (from Retry-After header)", rlErr.RetryAfterSeconds)
+	}
+}
+
+// TestParseResponse_RateLimitNoDetail verifies default detail when body is not valid JSON.
+func TestParseResponse_RateLimitNoDetail(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte("not json"))
+	}))
+	defer server.Close()
+
+	client := clientFromConfig(server.URL, "")
+
+	resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
+	if err != nil {
+		t.Fatalf("doRequest() error = %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	err = client.parseResponse(resp, &result)
+	if err == nil {
+		t.Fatal("parseResponse() error = nil, want RateLimitError")
+	}
+
+	rlErr, ok := err.(*RateLimitError)
+	if !ok {
+		t.Fatalf("error type = %T, want *RateLimitError", err)
+	}
+	if rlErr.Detail != "Request was throttled." {
+		t.Errorf("Detail = %q, want default 'Request was throttled.'", rlErr.Detail)
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	jsonOutput bool
+	humanOutput bool
 )
 
 // rootCmd is the base command
@@ -32,9 +32,9 @@ Commands:
   secrets    Key-value secrets (list/get/set/delete)
   contacts   Manage contacts (list/search/get/create/update/delete)
 
-All commands support --json for structured output.`,
+JSON output by default. Use --human for human-readable output.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		output.SetJSON(jsonOutput)
+		output.SetJSON(!humanOutput)
 	},
 	SilenceUsage:  true,
 	SilenceErrors: true,
@@ -46,7 +46,7 @@ func Execute() error {
 }
 
 func init() {
-	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
+	rootCmd.PersistentFlags().BoolVar(&humanOutput, "human", false, "Output in human-readable format")
 
 	// Add version command
 	rootCmd.AddCommand(&cobra.Command{

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -212,6 +213,175 @@ func TestGetInboxID(t *testing.T) {
 	}
 	if id != 42 {
 		t.Errorf("GetInboxID() = %v, want 42", id)
+	}
+}
+
+func TestGetInboxID_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]Email{})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.GetInboxID()
+	if err == nil {
+		t.Fatal("GetInboxID() error = nil, want error when no emails")
+	}
+}
+
+func TestUploadToPresignedURL_Success(t *testing.T) {
+	var receivedContentType string
+	var receivedMethod string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedMethod = r.Method
+		receivedContentType = r.Header.Get("Content-Type")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Create a temp file
+	tmpFile, err := os.CreateTemp("", "upload-test-*")
+	if err != nil {
+		t.Fatalf("CreateTemp() error = %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("test file content")
+	tmpFile.Close()
+
+	client := newTestClient(server.URL)
+	err = client.UploadToPresignedURL(server.URL+"/upload", tmpFile.Name(), "text/plain")
+	if err != nil {
+		t.Fatalf("UploadToPresignedURL() error = %v", err)
+	}
+	if receivedMethod != http.MethodPut {
+		t.Errorf("Method = %s, want PUT", receivedMethod)
+	}
+	if receivedContentType != "text/plain" {
+		t.Errorf("Content-Type = %s, want text/plain", receivedContentType)
+	}
+}
+
+func TestUploadToPresignedURL_FileNotFound(t *testing.T) {
+	client := newTestClient("http://localhost")
+	err := client.UploadToPresignedURL("http://localhost/upload", "/nonexistent/file.txt", "text/plain")
+	if err == nil {
+		t.Fatal("UploadToPresignedURL() error = nil, want error for missing file")
+	}
+	if !strings.Contains(err.Error(), "failed to open file") {
+		t.Errorf("Error = %q, want to contain 'failed to open file'", err.Error())
+	}
+}
+
+func TestUploadToPresignedURL_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Access denied"))
+	}))
+	defer server.Close()
+
+	tmpFile, err := os.CreateTemp("", "upload-test-*")
+	if err != nil {
+		t.Fatalf("CreateTemp() error = %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("test")
+	tmpFile.Close()
+
+	client := newTestClient(server.URL)
+	err = client.UploadToPresignedURL(server.URL+"/upload", tmpFile.Name(), "text/plain")
+	if err == nil {
+		t.Fatal("UploadToPresignedURL() error = nil, want error for 403")
+	}
+	if !strings.Contains(err.Error(), "upload failed") {
+		t.Errorf("Error = %q, want to contain 'upload failed'", err.Error())
+	}
+}
+
+func TestPresignAttachment_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Error{Detail: "Invalid"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.PresignAttachment(PresignRequest{})
+	if err == nil {
+		t.Fatal("PresignAttachment() error = nil, want error")
+	}
+}
+
+func TestReplyEmail_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Error{Detail: "Not found"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.ReplyEmail("999", ReplyRequest{Content: "test"})
+	if err == nil {
+		t.Fatal("ReplyEmail() error = nil, want error")
+	}
+}
+
+func TestReplyAllEmail_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Error{Detail: "Not found"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.ReplyAllEmail("999", ReplyRequest{Content: "test"})
+	if err == nil {
+		t.Fatal("ReplyAllEmail() error = nil, want error")
+	}
+}
+
+func TestForwardEmail_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Error{Detail: "Not found"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.ForwardEmail("999", ForwardRequest{ToEmail: "test@example.com"})
+	if err == nil {
+		t.Fatal("ForwardEmail() error = nil, want error")
+	}
+}
+
+func TestUploadAttachment_BlockedExtension(t *testing.T) {
+	blockedFile, err := os.CreateTemp("", "upload-test-*.exe")
+	if err != nil {
+		t.Fatalf("CreateTemp() error = %v", err)
+	}
+	defer os.Remove(blockedFile.Name())
+	blockedFile.WriteString("test")
+	blockedFile.Close()
+
+	client := newTestClient("http://localhost")
+	_, err = client.UploadAttachment(blockedFile.Name())
+	if err == nil {
+		t.Fatal("UploadAttachment() error = nil, want error for .exe file")
+	}
+	if !strings.Contains(err.Error(), "not allowed") {
+		t.Errorf("Error = %q, want to contain 'not allowed'", err.Error())
+	}
+}
+
+func TestUploadAttachment_FileNotFound(t *testing.T) {
+	client := newTestClient("http://localhost")
+	_, err := client.UploadAttachment("/nonexistent/file.txt")
+	if err == nil {
+		t.Fatal("UploadAttachment() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "cannot access") {
+		t.Errorf("Error = %q, want to contain 'cannot access'", err.Error())
 	}
 }
 

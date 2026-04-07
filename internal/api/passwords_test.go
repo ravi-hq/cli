@@ -203,6 +203,62 @@ func TestGeneratePassword_DefaultOpts(t *testing.T) {
 	}
 }
 
+func TestListPasswords_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(Error{Detail: "Error"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.ListPasswords()
+	if err == nil {
+		t.Fatal("ListPasswords() error = nil, want error")
+	}
+}
+
+func TestCreatePassword_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Error{Detail: "Validation error"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.CreatePassword(PasswordEntry{})
+	if err == nil {
+		t.Fatal("CreatePassword() error = nil, want error")
+	}
+}
+
+func TestUpdatePassword_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Error{Detail: "Not found"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.UpdatePassword("bad", map[string]interface{}{})
+	if err == nil {
+		t.Fatal("UpdatePassword() error = nil, want error")
+	}
+}
+
+func TestGeneratePassword_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(Error{Detail: "Error"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.GeneratePassword(PasswordGenOpts{})
+	if err == nil {
+		t.Fatal("GeneratePassword() error = nil, want error")
+	}
+}
+
 func TestGeneratePassword_CustomOpts(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()

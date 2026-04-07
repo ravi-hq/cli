@@ -40,7 +40,7 @@ func listEmailThreads(client *api.Client) error {
 		return err
 	}
 
-	if jsonOutput {
+	if !humanOutput {
 		return output.Current.Print(threads)
 	}
 
@@ -71,7 +71,7 @@ func showEmailThread(client *api.Client, threadID string) error {
 		return err
 	}
 
-	if jsonOutput {
+	if !humanOutput {
 		return output.Current.Print(thread)
 	}
 

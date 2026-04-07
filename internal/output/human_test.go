@@ -333,3 +333,137 @@ func TestHumanFormatter_Print_NilPointer(t *testing.T) {
 		t.Errorf("Print(nil pointer) should produce no output, got: %q", output)
 	}
 }
+
+func TestHumanFormatter_Print_PlainValue(t *testing.T) {
+	formatter := &HumanFormatter{}
+
+	output := captureStdout(func() {
+		err := formatter.Print("hello world")
+		if err != nil {
+			t.Errorf("Print() returned error: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "hello world") {
+		t.Errorf("Print(string) should contain 'hello world', got: %q", output)
+	}
+}
+
+func TestHumanFormatter_Print_SliceOfStrings(t *testing.T) {
+	formatter := &HumanFormatter{}
+
+	data := []string{"alpha", "beta", "gamma"}
+
+	output := captureStdout(func() {
+		err := formatter.Print(data)
+		if err != nil {
+			t.Errorf("Print() returned error: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "[1] alpha") {
+		t.Errorf("Print() should contain '[1] alpha', got: %s", output)
+	}
+	if !strings.Contains(output, "[2] beta") {
+		t.Errorf("Print() should contain '[2] beta', got: %s", output)
+	}
+}
+
+func TestHumanFormatter_Print_NestedPointerStruct(t *testing.T) {
+	formatter := &HumanFormatter{}
+
+	type Inner struct {
+		Value string `json:"value"`
+	}
+
+	type Outer struct {
+		Inner *Inner `json:"inner"`
+	}
+
+	data := Outer{Inner: &Inner{Value: "nested"}}
+
+	output := captureStdout(func() {
+		err := formatter.Print(data)
+		if err != nil {
+			t.Errorf("Print() returned error: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "inner:") {
+		t.Errorf("Print() should contain 'inner:', got: %s", output)
+	}
+	if !strings.Contains(output, "value: nested") {
+		t.Errorf("Print() should contain 'value: nested', got: %s", output)
+	}
+}
+
+func TestHumanFormatter_Print_SliceOfPointerStructs(t *testing.T) {
+	formatter := &HumanFormatter{}
+
+	type Item struct {
+		Name string `json:"name"`
+	}
+
+	data := []*Item{
+		{Name: "first"},
+		{Name: "second"},
+	}
+
+	output := captureStdout(func() {
+		err := formatter.Print(data)
+		if err != nil {
+			t.Errorf("Print() returned error: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "[1]") {
+		t.Errorf("Print() should contain '[1]', got: %s", output)
+	}
+	if !strings.Contains(output, "first") {
+		t.Errorf("Print() should contain 'first', got: %s", output)
+	}
+}
+
+func TestHumanFormatter_Print_FieldWithoutJSONTag(t *testing.T) {
+	formatter := &HumanFormatter{}
+
+	type MyStruct struct {
+		Name string
+	}
+
+	data := MyStruct{Name: "test"}
+
+	output := captureStdout(func() {
+		err := formatter.Print(data)
+		if err != nil {
+			t.Errorf("Print() returned error: %v", err)
+		}
+	})
+
+	// Should use field name when no json tag
+	if !strings.Contains(output, "Name: test") {
+		t.Errorf("Print() should contain 'Name: test', got: %s", output)
+	}
+}
+
+func TestHumanFormatter_Print_FieldWithDashJSONTag(t *testing.T) {
+	formatter := &HumanFormatter{}
+
+	type MyStruct struct {
+		Name   string `json:"name"`
+		Hidden string `json:"-"`
+	}
+
+	data := MyStruct{Name: "visible", Hidden: "hidden"}
+
+	output := captureStdout(func() {
+		err := formatter.Print(data)
+		if err != nil {
+			t.Errorf("Print() returned error: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "name: visible") {
+		t.Errorf("Print() should contain 'name: visible', got: %s", output)
+	}
+}

@@ -43,7 +43,7 @@ func listSMSConversations(client *api.Client) error {
 		return err
 	}
 
-	if jsonOutput {
+	if !humanOutput {
 		return output.Current.Print(conversations)
 	}
 
@@ -75,7 +75,7 @@ func showSMSConversation(client *api.Client, conversationID string) error {
 		return err
 	}
 
-	if jsonOutput {
+	if !humanOutput {
 		return output.Current.Print(conversation)
 	}
 
