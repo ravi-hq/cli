@@ -1846,6 +1846,622 @@ func TestFeedbackCmd_ComposeError(t *testing.T) {
 	}
 }
 
+// --- Human output tests ---
+// These tests exercise the humanOutput=true branches which format data as tables/text.
+
+func TestContactsListCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.ContactEntry{
+			{UUID: "c-1", Email: "alice@example.com", PhoneNumber: "+15551234567", DisplayName: "Alice", IsTrusted: true, Source: "manual"},
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := ctListCmd.RunE(ctListCmd, nil)
+	if err != nil {
+		t.Fatalf("ctListCmd.RunE() error = %v", err)
+	}
+}
+
+func TestContactsListCmd_HumanEmpty(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.ContactEntry{})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := ctListCmd.RunE(ctListCmd, nil)
+	if err != nil {
+		t.Fatalf("ctListCmd.RunE() error = %v", err)
+	}
+}
+
+func TestContactsGetCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.ContactEntry{
+			UUID: "c-1", Email: "alice@example.com", DisplayName: "Alice",
+			Nickname: "Ali", IsTrusted: true, Source: "manual", CreatedDt: "2026-01-01",
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := ctGetCmd.RunE(ctGetCmd, []string{"c-1"})
+	if err != nil {
+		t.Fatalf("ctGetCmd.RunE() error = %v", err)
+	}
+}
+
+func TestContactsGetCmd_HumanNoNickname(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.ContactEntry{
+			UUID: "c-1", Email: "alice@example.com", DisplayName: "Alice",
+			IsTrusted: false, Source: "auto", CreatedDt: "2026-01-01",
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := ctGetCmd.RunE(ctGetCmd, []string{"c-1"})
+	if err != nil {
+		t.Fatalf("ctGetCmd.RunE() error = %v", err)
+	}
+}
+
+func TestContactsCreateCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.ContactEntry{UUID: "c-new", Email: "new@example.com"})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := ctCreateCmd.RunE(ctCreateCmd, nil)
+	if err != nil {
+		t.Fatalf("ctCreateCmd.RunE() error = %v", err)
+	}
+}
+
+func TestContactsDeleteCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := ctDeleteCmd.RunE(ctDeleteCmd, []string{"c-1"})
+	if err != nil {
+		t.Fatalf("ctDeleteCmd.RunE() error = %v", err)
+	}
+}
+
+func TestContactsSearchCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.ContactEntry{
+			{UUID: "c-1", Email: "alice@example.com", DisplayName: "Alice", Source: "manual"},
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := ctSearchCmd.RunE(ctSearchCmd, []string{"alice"})
+	if err != nil {
+		t.Fatalf("ctSearchCmd.RunE() error = %v", err)
+	}
+}
+
+func TestContactsSearchCmd_HumanEmpty(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.ContactEntry{})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := ctSearchCmd.RunE(ctSearchCmd, []string{"nobody"})
+	if err != nil {
+		t.Fatalf("ctSearchCmd.RunE() error = %v", err)
+	}
+}
+
+// --- Passwords human output ---
+
+func TestPasswordsListCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.PasswordEntry{
+			{UUID: "p-1", Domain: "example.com", Username: "admin", CreatedDt: "2026-01-01"},
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := pwListCmd.RunE(pwListCmd, nil)
+	if err != nil {
+		t.Fatalf("pwListCmd.RunE() error = %v", err)
+	}
+}
+
+func TestPasswordsListCmd_HumanEmpty(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.PasswordEntry{})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := pwListCmd.RunE(pwListCmd, nil)
+	if err != nil {
+		t.Fatalf("pwListCmd.RunE() error = %v", err)
+	}
+}
+
+func TestPasswordsGetCmd_HumanOutput(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.PasswordEntry{
+			UUID: "p-1", Domain: "example.com", Username: "admin",
+			Password: "secret123", Notes: "prod creds", CreatedDt: "2026-01-01",
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := pwGetCmd.RunE(pwGetCmd, []string{"p-1"})
+	if err != nil {
+		t.Fatalf("pwGetCmd.RunE() error = %v", err)
+	}
+}
+
+func TestPasswordsGetCmd_HumanOutputNoNotes(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.PasswordEntry{
+			UUID: "p-1", Domain: "example.com", Username: "admin",
+			Password: "secret123", CreatedDt: "2026-01-01",
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := pwGetCmd.RunE(pwGetCmd, []string{"p-1"})
+	if err != nil {
+		t.Fatalf("pwGetCmd.RunE() error = %v", err)
+	}
+}
+
+func TestPasswordsCreateCmd_HumanOutput(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/passwords/generate/" {
+			json.NewEncoder(w).Encode(api.GeneratedPassword{Password: "gen-pass-123"})
+		} else {
+			json.NewEncoder(w).Encode(api.PasswordEntry{UUID: "p-new", Domain: "example.com"})
+		}
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	pwPassword = "mypass"
+	err := pwCreateCmd.RunE(pwCreateCmd, []string{"example.com"})
+	pwPassword = ""
+	if err != nil {
+		t.Fatalf("pwCreateCmd.RunE() error = %v", err)
+	}
+}
+
+func TestPasswordsDeleteCmd_HumanOutput(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := pwDeleteCmd.RunE(pwDeleteCmd, []string{"p-1"})
+	if err != nil {
+		t.Fatalf("pwDeleteCmd.RunE() error = %v", err)
+	}
+}
+
+func TestPasswordsGenerateCmd_HumanOutput(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.GeneratedPassword{Password: "gen-pass-456"})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := pwGenerateCmd.RunE(pwGenerateCmd, nil)
+	if err != nil {
+		t.Fatalf("pwGenerateCmd.RunE() error = %v", err)
+	}
+}
+
+// --- Secrets human output ---
+
+func TestSecretsListCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.SecretEntry{
+			{UUID: "s-1", Key: "API_KEY", Value: "hidden", CreatedDt: "2026-01-01"},
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := secretListCmd.RunE(secretListCmd, nil)
+	if err != nil {
+		t.Fatalf("secretListCmd.RunE() error = %v", err)
+	}
+}
+
+func TestSecretsListCmd_HumanEmpty(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.SecretEntry{})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := secretListCmd.RunE(secretListCmd, nil)
+	if err != nil {
+		t.Fatalf("secretListCmd.RunE() error = %v", err)
+	}
+}
+
+func TestSecretsGetCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.SecretEntry{
+			{UUID: "s-1", Key: "API_KEY", Value: "secret-val", Notes: "prod key", CreatedDt: "2026-01-01"},
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := secretGetCmd.RunE(secretGetCmd, []string{"API_KEY"})
+	if err != nil {
+		t.Fatalf("secretGetCmd.RunE() error = %v", err)
+	}
+}
+
+func TestSecretsGetCmd_HumanNoNotes(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.SecretEntry{
+			{UUID: "s-1", Key: "API_KEY", Value: "secret-val", CreatedDt: "2026-01-01"},
+		})
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := secretGetCmd.RunE(secretGetCmd, []string{"API_KEY"})
+	if err != nil {
+		t.Fatalf("secretGetCmd.RunE() error = %v", err)
+	}
+}
+
+func TestSecretsSetCmd_Human(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == "GET" {
+			// GetSecret returns empty list (key not found) -> create path
+			json.NewEncoder(w).Encode([]api.SecretEntry{})
+		} else {
+			json.NewEncoder(w).Encode(api.SecretEntry{UUID: "s-new", Key: "NEW_KEY", Value: "val"})
+		}
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := secretSetCmd.RunE(secretSetCmd, []string{"NEW_KEY", "val"})
+	if err != nil {
+		t.Fatalf("secretSetCmd.RunE() error = %v", err)
+	}
+}
+
+func TestSecretsDeleteCmd_HumanOutput(t *testing.T) {
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	err := secretDeleteCmd.RunE(secretDeleteCmd, []string{"s-1"})
+	if err != nil {
+		t.Fatalf("secretDeleteCmd.RunE() error = %v", err)
+	}
+}
+
+// --- Inbox human output ---
+
+func TestListEmailThreads_Human(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.EmailThread{
+			{
+				ThreadID:        "t-1",
+				Subject:         "Hello",
+				FromEmail:       "sender@example.com",
+				MessageCount:    2,
+				UnreadCount:     1,
+				LatestMessageDt: time.Now(),
+			},
+		})
+	}))
+	_ = server
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	client, err := api.NewClient()
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	err = listEmailThreads(client)
+	if err != nil {
+		t.Fatalf("listEmailThreads() error = %v", err)
+	}
+}
+
+func TestListEmailThreads_HumanEmpty(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.EmailThread{})
+	}))
+	_ = server
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	client, err := api.NewClient()
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	err = listEmailThreads(client)
+	if err != nil {
+		t.Fatalf("listEmailThreads() error = %v", err)
+	}
+}
+
+func TestShowEmailThread_Human(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.EmailThreadDetail{
+			ThreadID:     "t-1",
+			Subject:      "Hello",
+			MessageCount: 2,
+			Messages: []api.EmailMessage{
+				{
+					ID:          1,
+					FromEmail:   "sender@example.com",
+					ToEmail:     "test@ravi.id",
+					Subject:     "Hello",
+					TextContent: "Hi there",
+					Direction:   "incoming",
+					IsRead:      false,
+					CreatedDt:   time.Now(),
+				},
+				{
+					ID:          2,
+					FromEmail:   "test@ravi.id",
+					ToEmail:     "sender@example.com",
+					CC:          "cc@example.com",
+					Subject:     "Re: Hello",
+					TextContent: "",
+					Direction:   "outgoing",
+					IsRead:      true,
+					CreatedDt:   time.Now(),
+				},
+			},
+		})
+	}))
+	_ = server
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	client, err := api.NewClient()
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	err = showEmailThread(client, "t-1")
+	if err != nil {
+		t.Fatalf("showEmailThread() error = %v", err)
+	}
+}
+
+func TestListSMSConversations_Human(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.SMSConversation{
+			{
+				ConversationID:  "c-1",
+				FromNumber:      "+15551234567",
+				PhoneNumber:     "+15559876543",
+				Preview:         "Hello!",
+				MessageCount:    3,
+				UnreadCount:     1,
+				LatestMessageDt: time.Now(),
+			},
+		})
+	}))
+	_ = server
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	client, err := api.NewClient()
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	err = listSMSConversations(client)
+	if err != nil {
+		t.Fatalf("listSMSConversations() error = %v", err)
+	}
+}
+
+func TestListSMSConversations_HumanEmpty(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.SMSConversation{})
+	}))
+	_ = server
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	client, err := api.NewClient()
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	err = listSMSConversations(client)
+	if err != nil {
+		t.Fatalf("listSMSConversations() error = %v", err)
+	}
+}
+
+func TestShowSMSConversation_Human(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.SMSConversationDetail{
+			ConversationID: "c-1",
+			FromNumber:     "+15551234567",
+			Phone:          "+15559876543",
+			MessageCount:   2,
+			Messages: []api.SMSMessage{
+				{ID: 1, Body: "Hello", Direction: "incoming", IsRead: false, CreatedDt: time.Now()},
+				{ID: 2, Body: "Hi back", Direction: "outgoing", IsRead: true, CreatedDt: time.Now()},
+			},
+		})
+	}))
+	_ = server
+	defer cleanup()
+
+	humanOutput = true
+	defer func() { humanOutput = false }()
+
+	client, err := api.NewClient()
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	err = showSMSConversation(client, "c-1")
+	if err != nil {
+		t.Fatalf("showSMSConversation() error = %v", err)
+	}
+}
+
+// --- Upload attachments success path ---
+
+func TestUploadAttachments_Success(t *testing.T) {
+	tmpFile := filepath.Join(t.TempDir(), "test.txt")
+	os.WriteFile(tmpFile, []byte("hello"), 0600)
+
+	var serverURL string
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == "PUT" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"uuid":       "att-123",
+			"upload_url": serverURL + "/upload",
+		})
+	}))
+	serverURL = server.URL
+	defer cleanup()
+
+	client, err := api.NewClient()
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	uuids, err := uploadAttachments(client, []string{tmpFile})
+	if err != nil {
+		t.Fatalf("uploadAttachments() error = %v", err)
+	}
+	if len(uuids) != 1 {
+		t.Fatalf("uploadAttachments() returned %d uuids, want 1", len(uuids))
+	}
+}
+
+// --- Execute and PersistentPreRun ---
+
+func TestExecute(t *testing.T) {
+	// Execute with --help to avoid actually running a command that needs auth.
+	rootCmd.SetArgs([]string{"--help"})
+	err := Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+}
+
+func TestPersistentPreRun(t *testing.T) {
+	// Trigger PersistentPreRun by calling it directly.
+	humanOutput = true
+	rootCmd.PersistentPreRun(rootCmd, nil)
+
+	// After PersistentPreRun with humanOutput=true, SetJSON(false) is called,
+	// so Current should be HumanFormatter.
+	humanOutput = false
+	rootCmd.PersistentPreRun(rootCmd, nil)
+}
+
 // Suppress unused import warnings - these are used by setupCLITest.
 var _ = fmt.Sprintf
 var _ = runtime.GOOS
