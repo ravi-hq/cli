@@ -59,9 +59,9 @@ See `.claude/skills/ravi-cli.md` for detailed usage instructions.
 
 ```bash
 # Build (API_URL is REQUIRED at build time)
-make build API_URL=https://ravi.app      # Build binary
-make build-all API_URL=https://ravi.app  # Cross-compile all platforms
-make install API_URL=https://ravi.app    # Install to $GOPATH/bin
+make build API_URL=https://ravi.id      # Build binary
+make build-all API_URL=https://ravi.id  # Cross-compile all platforms
+make install API_URL=https://ravi.id    # Install to $GOPATH/bin
 
 # Development
 make test              # Run tests
@@ -153,7 +153,7 @@ Resolution order:
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| "API URL not configured" | Built without `API_URL` | Rebuild: `make build API_URL=https://ravi.app` |
+| "API URL not configured" | Built without `API_URL` | Rebuild: `make build API_URL=https://ravi.id` |
 | "encryption not set up" | No keypair in config | Run `ravi auth login` and complete PIN setup |
 | 401 after token refresh | Refresh token also expired | Re-authenticate: `ravi auth login` |
 | Decryption fails | Wrong PIN or corrupted config | Delete `~/.ravi/auth.json` and re-login |

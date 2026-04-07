@@ -2,7 +2,7 @@
 //
 // The application is built with the API base URL injected at build time:
 //
-//	make build API_URL=https://ravi.app
+//	make build API_URL=https://ravi.id
 //
 // Run with --help to see available commands.
 package main

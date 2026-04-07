@@ -15,8 +15,7 @@ import (
 	"github.com/ravi-hq/cli/internal/version"
 )
 
-// withTempHome is a test helper that temporarily changes the HOME environment variable
-// to allow testing functions that use config.LoadAuth() and config.SaveAuth().
+// withTempHome is a test helper that temporarily changes the HOME environment variable.
 func withTempHome(t *testing.T) (tmpDir string, cleanup func()) {
 	t.Helper()
 
@@ -53,36 +52,34 @@ func withAPIBaseURL(t *testing.T, url string) func() {
 	}
 }
 
-// setupTestAuth saves auth config to disk in the temp home directory.
-func setupTestAuth(t *testing.T, auth *config.AuthConfig) {
+// setupTestConfig saves config to disk in the temp home directory.
+func setupTestConfig(t *testing.T, cfg *config.Config) {
 	t.Helper()
 
-	if err := config.SaveAuth(auth); err != nil {
-		t.Fatalf("Failed to save test auth: %v", err)
+	if err := config.SaveGlobalConfig(cfg); err != nil {
+		t.Fatalf("Failed to save test config: %v", err)
 	}
 }
 
 // newTestClient creates a Client wired to the given httptest server URL.
-// Used by inbox_test.go and passwords_test.go for quick test setup.
 func newTestClient(serverURL string) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: 5 * time.Second},
 		baseURL:    strings.TrimSuffix(serverURL, "/"),
-		auth:       &config.AuthConfig{AccessToken: "test-token"},
+		apiKey:     "test-token",
 	}
 }
 
-// clientFromAuth creates a Client with specific auth pointed at a test server.
-// Use instead of NewClient() in unit tests that don't need disk config.
-func clientFromAuth(serverURL string, auth *config.AuthConfig) *Client {
+// clientFromConfig creates a Client with specific config pointed at a test server.
+func clientFromConfig(serverURL string, apiKey string) *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: 5 * time.Second},
 		baseURL:    strings.TrimSuffix(serverURL, "/"),
-		auth:       auth,
+		apiKey:     apiKey,
 	}
 }
 
-// TestNewClient_Success verifies that NewClient loads auth from disk and creates a valid client.
+// TestNewClient_Success verifies that NewClient loads config from disk and creates a valid client.
 func TestNewClient_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -95,12 +92,12 @@ func TestNewClient_Success(t *testing.T) {
 	_, cleanupHome := withTempHome(t)
 	defer cleanupHome()
 
-	auth := &config.AuthConfig{
-		AccessToken:  "test-access-token",
-		RefreshToken: "test-refresh-token",
-		UserEmail:    "test@example.com",
+	cfg := &config.Config{
+		ManagementKey: "ravi_mgmt_test123",
+		IdentityKey:   "ravi_id_test456",
+		UserEmail:     "test@example.com",
 	}
-	setupTestAuth(t, auth)
+	setupTestConfig(t, cfg)
 
 	client, err := NewClient()
 	if err != nil {
@@ -111,14 +108,12 @@ func TestNewClient_Success(t *testing.T) {
 		t.Fatal("NewClient() returned nil client")
 	}
 
-	if client.auth.AccessToken != auth.AccessToken {
-		t.Errorf("client.auth.AccessToken = %v, want %v", client.auth.AccessToken, auth.AccessToken)
+	// Should prefer identity key
+	if client.apiKey != cfg.IdentityKey {
+		t.Errorf("client.apiKey = %v, want %v", client.apiKey, cfg.IdentityKey)
 	}
-	if client.auth.RefreshToken != auth.RefreshToken {
-		t.Errorf("client.auth.RefreshToken = %v, want %v", client.auth.RefreshToken, auth.RefreshToken)
-	}
-	if client.auth.UserEmail != auth.UserEmail {
-		t.Errorf("client.auth.UserEmail = %v, want %v", client.auth.UserEmail, auth.UserEmail)
+	if client.userEmail != cfg.UserEmail {
+		t.Errorf("client.userEmail = %v, want %v", client.userEmail, cfg.UserEmail)
 	}
 
 	expectedBaseURL := strings.TrimSuffix(server.URL, "/")
@@ -127,8 +122,8 @@ func TestNewClient_Success(t *testing.T) {
 	}
 }
 
-// TestNewClient_LoadsFromDisk verifies that NewClient loads auth from disk.
-func TestNewClient_LoadsFromDisk(t *testing.T) {
+// TestNewClient_FallsBackToManagementKey verifies that NewClient uses management key when no identity key.
+func TestNewClient_FallsBackToManagementKey(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -140,27 +135,19 @@ func TestNewClient_LoadsFromDisk(t *testing.T) {
 	_, cleanupHome := withTempHome(t)
 	defer cleanupHome()
 
-	diskAuth := &config.AuthConfig{
-		AccessToken:  "disk-access-token",
-		RefreshToken: "disk-refresh-token",
-		UserEmail:    "disk@example.com",
+	cfg := &config.Config{
+		ManagementKey: "ravi_mgmt_test123",
+		UserEmail:     "test@example.com",
 	}
-	setupTestAuth(t, diskAuth)
+	setupTestConfig(t, cfg)
 
 	client, err := NewClient()
 	if err != nil {
 		t.Fatalf("NewClient() error = %v, want nil", err)
 	}
 
-	if client == nil {
-		t.Fatal("NewClient() returned nil client")
-	}
-
-	if client.auth.AccessToken != diskAuth.AccessToken {
-		t.Errorf("client.auth.AccessToken = %v, want %v", client.auth.AccessToken, diskAuth.AccessToken)
-	}
-	if client.auth.UserEmail != diskAuth.UserEmail {
-		t.Errorf("client.auth.UserEmail = %v, want %v", client.auth.UserEmail, diskAuth.UserEmail)
+	if client.apiKey != cfg.ManagementKey {
+		t.Errorf("client.apiKey = %v, want %v (management key fallback)", client.apiKey, cfg.ManagementKey)
 	}
 }
 
@@ -198,7 +185,7 @@ func TestDoRequest_JSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{})
+	client := clientFromConfig(server.URL, "")
 
 	requestBody := map[string]string{
 		"key1": "value1",
@@ -211,12 +198,10 @@ func TestDoRequest_JSON(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	// Verify Content-Type header
 	if receivedContentType != "application/json" {
 		t.Errorf("Content-Type = %v, want application/json", receivedContentType)
 	}
 
-	// Verify request body was properly marshaled
 	if receivedBody["key1"] != "value1" {
 		t.Errorf("request body key1 = %v, want value1", receivedBody["key1"])
 	}
@@ -235,9 +220,7 @@ func TestDoRequest_Auth(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{
-		AccessToken: "test-access-token-12345",
-	})
+	client := clientFromConfig(server.URL, "ravi_id_test-key-12345")
 
 	resp, err := client.doRequest(http.MethodGet, "/test", nil, true)
 	if err != nil {
@@ -245,7 +228,7 @@ func TestDoRequest_Auth(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	expectedAuth := "Bearer test-access-token-12345"
+	expectedAuth := "Bearer ravi_id_test-key-12345"
 	if receivedAuthHeader != expectedAuth {
 		t.Errorf("Authorization header = %v, want %v", receivedAuthHeader, expectedAuth)
 	}
@@ -261,9 +244,7 @@ func TestDoRequest_NoAuth(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{
-		AccessToken: "test-access-token-should-not-be-sent",
-	})
+	client := clientFromConfig(server.URL, "ravi_id_should-not-be-sent")
 
 	resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
 	if err != nil {
@@ -289,7 +270,7 @@ func TestParseResponse_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{})
+	client := clientFromConfig(server.URL, "")
 
 	resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
 	if err != nil {
@@ -340,7 +321,7 @@ func TestParseResponse_Error400(t *testing.T) {
 		},
 		{
 			name:         "plain text body",
-			responseBody: nil, // Will send plain text
+			responseBody: nil,
 			wantContains: "status 400",
 		},
 	}
@@ -358,7 +339,7 @@ func TestParseResponse_Error400(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := clientFromAuth(server.URL, &config.AuthConfig{})
+			client := clientFromConfig(server.URL, "")
 
 			resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
 			if err != nil {
@@ -388,7 +369,7 @@ func TestParseResponse_Error500(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{})
+	client := clientFromConfig(server.URL, "")
 
 	resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
 	if err != nil {
@@ -408,263 +389,21 @@ func TestParseResponse_Error500(t *testing.T) {
 	}
 }
 
-// TestRefreshAccessToken_Success verifies that RefreshAccessToken updates tokens correctly.
-func TestRefreshAccessToken_Success(t *testing.T) {
-	_, cleanupHome := withTempHome(t)
-	defer cleanupHome()
-
-	newAccessToken := "new-access-token-after-refresh"
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify the request path
-		if r.URL.Path != PathTokenRefresh {
-			t.Errorf("Request path = %v, want %v", r.URL.Path, PathTokenRefresh)
-		}
-
-		// Verify the request body contains the refresh token
-		var req RefreshRequest
-		json.NewDecoder(r.Body).Decode(&req)
-		if req.Refresh != "original-refresh-token" {
-			t.Errorf("Refresh token in request = %v, want original-refresh-token", req.Refresh)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(RefreshResponse{
-			Access: newAccessToken,
-		})
-	}))
-	defer server.Close()
-
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	auth := &config.AuthConfig{
-		AccessToken:  "old-access-token",
-		RefreshToken: "original-refresh-token",
-	}
-	setupTestAuth(t, auth)
-
-	client := clientFromAuth(server.URL, auth)
-
-	err := client.RefreshAccessToken()
-	if err != nil {
-		t.Fatalf("RefreshAccessToken() error = %v", err)
-	}
-
-	// Verify the client's auth was updated
-	if client.auth.AccessToken != newAccessToken {
-		t.Errorf("client.auth.AccessToken = %v, want %v", client.auth.AccessToken, newAccessToken)
-	}
-
-	// Verify the auth was saved to disk
-	loadedAuth, err := config.LoadAuth()
-	if err != nil {
-		t.Fatalf("config.LoadAuth() error = %v", err)
-	}
-	if loadedAuth.AccessToken != newAccessToken {
-		t.Errorf("saved auth AccessToken = %v, want %v", loadedAuth.AccessToken, newAccessToken)
-	}
-}
-
-// TestRefreshAccessToken_Failure verifies that RefreshAccessToken handles refresh errors.
-func TestRefreshAccessToken_Failure(t *testing.T) {
-	_, cleanupHome := withTempHome(t)
-	defer cleanupHome()
-
-	testCases := []struct {
-		name           string
-		statusCode     int
-		responseBody   interface{}
-		wantErrContain string
-	}{
-		{
-			name:       "invalid refresh token",
-			statusCode: http.StatusUnauthorized,
-			responseBody: Error{
-				Detail: "Token is invalid or expired",
-			},
-			wantErrContain: "Token is invalid or expired",
-		},
-		{
-			name:           "server error",
-			statusCode:     http.StatusInternalServerError,
-			responseBody:   nil,
-			wantErrContain: "500",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tc.statusCode)
-				if tc.responseBody != nil {
-					json.NewEncoder(w).Encode(tc.responseBody)
-				}
-			}))
-			defer server.Close()
-
-			cleanupURL := withAPIBaseURL(t, server.URL)
-			defer cleanupURL()
-
-			auth := &config.AuthConfig{
-				AccessToken:  "old-access-token",
-				RefreshToken: "invalid-refresh-token",
-			}
-
-			client := clientFromAuth(server.URL, auth)
-
-			err := client.RefreshAccessToken()
-			if err == nil {
-				t.Fatal("RefreshAccessToken() error = nil, want error")
-			}
-
-			if !strings.Contains(err.Error(), tc.wantErrContain) {
-				t.Errorf("RefreshAccessToken() error = %v, want error containing %q", err, tc.wantErrContain)
-			}
-		})
-	}
-}
-
-// TestDoAuthenticatedRequest_401Retry verifies retry on 401 status.
-func TestDoAuthenticatedRequest_401Retry(t *testing.T) {
-	_, cleanupHome := withTempHome(t)
-	defer cleanupHome()
-
-	requestCount := 0
-	refreshCalled := false
-	newAccessToken := "new-token-after-401"
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case PathTokenRefresh:
-			refreshCalled = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(RefreshResponse{
-				Access: newAccessToken,
-			})
-		case "/api/protected":
-			requestCount++
-			authHeader := r.Header.Get("Authorization")
-
-			if requestCount == 1 {
-				// First request: return 401 to trigger refresh
-				if authHeader != "Bearer original-access-token" {
-					t.Errorf("First request auth = %v, want Bearer original-access-token", authHeader)
-				}
-				w.WriteHeader(http.StatusUnauthorized)
-				json.NewEncoder(w).Encode(Error{Detail: "Token expired"})
-				return
-			}
-
-			// Second request: should have refreshed token
-			if authHeader != "Bearer "+newAccessToken {
-				t.Errorf("Second request auth = %v, want Bearer %s", authHeader, newAccessToken)
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]string{"status": "success"})
-		default:
-			t.Errorf("Unexpected request path: %s", r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-
-	cleanupURL := withAPIBaseURL(t, server.URL)
-	defer cleanupURL()
-
-	// Create client with tokens
-	auth := &config.AuthConfig{
-		AccessToken:  "original-access-token",
-		RefreshToken: "valid-refresh-token",
-	}
-	setupTestAuth(t, auth)
-
-	client := clientFromAuth(server.URL, auth)
-
-	var result map[string]string
-	err := client.doAuthenticatedRequest(http.MethodGet, "/api/protected", nil, &result)
-	if err != nil {
-		t.Fatalf("doAuthenticatedRequest() error = %v", err)
-	}
-
-	// Verify refresh was called after 401
-	if !refreshCalled {
-		t.Error("Expected RefreshAccessToken to be called after 401")
-	}
-
-	// Verify there were 2 requests to the protected endpoint
-	if requestCount != 2 {
-		t.Errorf("Request count = %v, want 2 (initial + retry)", requestCount)
-	}
-
-	// Verify the result
-	if result["status"] != "success" {
-		t.Errorf("result status = %v, want 'success'", result["status"])
-	}
-}
-
-// TestIsAuthenticated_True verifies that IsAuthenticated returns true when both tokens are present.
+// TestIsAuthenticated_True verifies that IsAuthenticated returns true when API key is present.
 func TestIsAuthenticated_True(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	client := clientFromAuth(server.URL, &config.AuthConfig{
-		AccessToken:  "valid-access-token",
-		RefreshToken: "valid-refresh-token",
-	})
+	client := clientFromConfig("http://localhost", "ravi_id_valid-key")
 
 	if !client.IsAuthenticated() {
-		t.Error("IsAuthenticated() = false, want true when both tokens are present")
+		t.Error("IsAuthenticated() = false, want true when API key is present")
 	}
 }
 
-// TestIsAuthenticated_False verifies that IsAuthenticated returns false when tokens are missing.
+// TestIsAuthenticated_False verifies that IsAuthenticated returns false when API key is missing.
 func TestIsAuthenticated_False(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
+	client := clientFromConfig("http://localhost", "")
 
-	testCases := []struct {
-		name string
-		auth *config.AuthConfig
-	}{
-		{
-			name: "no access token",
-			auth: &config.AuthConfig{
-				AccessToken:  "",
-				RefreshToken: "valid-refresh-token",
-			},
-		},
-		{
-			name: "no refresh token",
-			auth: &config.AuthConfig{
-				AccessToken:  "valid-access-token",
-				RefreshToken: "",
-			},
-		},
-		{
-			name: "no tokens at all",
-			auth: &config.AuthConfig{
-				AccessToken:  "",
-				RefreshToken: "",
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			client := clientFromAuth(server.URL, tc.auth)
-
-			if client.IsAuthenticated() {
-				t.Error("IsAuthenticated() = true, want false when tokens are missing")
-			}
-		})
+	if client.IsAuthenticated() {
+		t.Error("IsAuthenticated() = true, want false when API key is missing")
 	}
 }
 
@@ -675,7 +414,7 @@ func TestBuildURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{})
+	client := clientFromConfig(server.URL, "")
 
 	testCases := []struct {
 		name     string
@@ -733,9 +472,11 @@ func TestGetUserEmail(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			client := clientFromAuth("http://localhost", &config.AuthConfig{
-				UserEmail: tc.userEmail,
-			})
+			client := &Client{
+				httpClient: &http.Client{Timeout: 5 * time.Second},
+				baseURL:    "http://localhost",
+				userEmail:  tc.userEmail,
+			}
 
 			if got := client.GetUserEmail(); got != tc.userEmail {
 				t.Errorf("GetUserEmail() = %v, want %v", got, tc.userEmail)
@@ -747,7 +488,6 @@ func TestGetUserEmail(t *testing.T) {
 // TestDoRequest_NilBody verifies that doRequest handles nil body correctly.
 func TestDoRequest_NilBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify no body was sent for GET request with nil body
 		if r.ContentLength > 0 {
 			t.Errorf("ContentLength = %v, want 0 for nil body", r.ContentLength)
 		}
@@ -755,7 +495,7 @@ func TestDoRequest_NilBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{})
+	client := clientFromConfig(server.URL, "")
 
 	resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
 	if err != nil {
@@ -778,7 +518,7 @@ func TestDoRequest_AcceptHeader(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{})
+	client := clientFromConfig(server.URL, "")
 
 	resp, err := client.doRequest(http.MethodGet, "/test", nil, false)
 	if err != nil {
@@ -798,7 +538,6 @@ func TestNewClient_BaseURLTrailingSlash(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Set URL with trailing slash
 	cleanupURL := withAPIBaseURL(t, server.URL+"/")
 	defer cleanupURL()
 
@@ -810,7 +549,6 @@ func TestNewClient_BaseURLTrailingSlash(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	// The base URL should not have a trailing slash
 	if strings.HasSuffix(client.baseURL, "/") {
 		t.Errorf("client.baseURL = %v, should not end with /", client.baseURL)
 	}
@@ -820,11 +558,10 @@ func TestNewClient_BaseURLTrailingSlash(t *testing.T) {
 func TestParseResponse_EmptyBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		// No body written
 	}))
 	defer server.Close()
 
-	client := clientFromAuth(server.URL, &config.AuthConfig{})
+	client := clientFromConfig(server.URL, "")
 
 	resp, err := client.doRequest(http.MethodDelete, "/test", nil, false)
 	if err != nil {
@@ -835,35 +572,8 @@ func TestParseResponse_EmptyBody(t *testing.T) {
 	var result map[string]interface{}
 	err = client.parseResponse(resp, &result)
 
-	// Should not error on empty body with 200 status
 	if err != nil {
 		t.Errorf("parseResponse() error = %v, want nil for empty body with 200", err)
-	}
-}
-
-// TestDoAuthenticatedRequest_NoRefreshToken verifies behavior when no refresh token is available.
-func TestDoAuthenticatedRequest_NoRefreshToken(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == PathTokenRefresh {
-			t.Error("Refresh endpoint should not be called when no refresh token")
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(Error{Detail: "Token expired"})
-	}))
-	defer server.Close()
-
-	client := clientFromAuth(server.URL, &config.AuthConfig{
-		AccessToken:  "expired-token",
-		RefreshToken: "", // No refresh token
-	})
-
-	var result map[string]interface{}
-	err := client.doAuthenticatedRequest(http.MethodGet, "/api/protected", nil, &result)
-
-	// Should return 401 error without attempting refresh
-	if err == nil {
-		t.Fatal("doAuthenticatedRequest() error = nil, want error for 401 without refresh token")
 	}
 }
 
@@ -887,7 +597,7 @@ func TestDoRequest_HTTPMethods(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client := clientFromAuth(server.URL, &config.AuthConfig{})
+			client := clientFromConfig(server.URL, "")
 
 			resp, err := client.doRequest(method, "/test", nil, false)
 			if err != nil {
@@ -902,8 +612,8 @@ func TestDoRequest_HTTPMethods(t *testing.T) {
 	}
 }
 
-// TestNewClient_NoAuthFile verifies NewClient returns empty auth when no file exists.
-func TestNewClient_NoAuthFile(t *testing.T) {
+// TestNewClient_NoConfigFile verifies NewClient returns empty auth when no config file exists.
+func TestNewClient_NoConfigFile(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -915,10 +625,10 @@ func TestNewClient_NoAuthFile(t *testing.T) {
 	tmpDir, cleanupHome := withTempHome(t)
 	defer cleanupHome()
 
-	// Ensure no auth file exists
-	authPath := filepath.Join(tmpDir, ".ravi", "auth.json")
-	if _, err := os.Stat(authPath); !os.IsNotExist(err) {
-		t.Fatalf("Auth file should not exist in fresh temp dir")
+	// Ensure no config file exists
+	configPath := filepath.Join(tmpDir, ".ravi", "config.json")
+	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
+		t.Fatalf("Config file should not exist in fresh temp dir")
 	}
 
 	client, err := NewClient()
@@ -930,11 +640,8 @@ func TestNewClient_NoAuthFile(t *testing.T) {
 		t.Fatal("NewClient() returned nil client")
 	}
 
-	// Auth should be empty (loaded from non-existent file)
-	if client.auth.AccessToken != "" {
-		t.Errorf("client.auth.AccessToken = %v, want empty", client.auth.AccessToken)
-	}
-	if client.auth.RefreshToken != "" {
-		t.Errorf("client.auth.RefreshToken = %v, want empty", client.auth.RefreshToken)
+	// API key should be empty
+	if client.apiKey != "" {
+		t.Errorf("client.apiKey = %v, want empty", client.apiKey)
 	}
 }

@@ -21,17 +21,22 @@ type DeviceCodeResponse struct {
 }
 
 // DeviceTokenRequest represents the polling request to exchange a device code
-// for access and refresh tokens after the user has authorized the device.
+// for API keys after the user has authorized the device.
 type DeviceTokenRequest struct {
 	DeviceCode string `json:"device_code"`
+	Wait       bool   `json:"wait"`
 }
 
-// DeviceTokenResponse contains the access token, refresh token, and user information
+// DeviceTokenResponse contains the API keys and user/identity information
 // returned after successful device authorization.
+// For signup: management_key + identity_key + identity details.
+// For login: management_key + identities list.
 type DeviceTokenResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh"`
-	User    User   `json:"user"`
+	ManagementKey string     `json:"management_key"`
+	IdentityKey   string     `json:"identity_key,omitempty"`
+	Identity      *Identity  `json:"identity,omitempty"`
+	Identities    []Identity `json:"identities,omitempty"`
+	User          User       `json:"user"`
 }
 
 // DeviceTokenError represents an error response during device token polling,
@@ -50,23 +55,17 @@ type User struct {
 	LastName  string `json:"last_name"`
 }
 
-// RefreshRequest represents the request body for refreshing an expired access token
-// using a valid refresh token.
-type RefreshRequest struct {
-	Refresh string `json:"refresh"`
+// CreateIdentityKeyRequest represents the request to create an identity-scoped API key.
+type CreateIdentityKeyRequest struct {
+	IdentityUUID string `json:"identity_uuid"`
+	Label        string `json:"label"`
 }
 
-// RefreshResponse contains the new access token (and optionally a rotated
-// refresh token) returned after a successful token refresh operation.
-type RefreshResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh,omitempty"`
-}
-
-// BindIdentityResponse holds the token pair returned by the bind-identity endpoint.
-type BindIdentityResponse struct {
-	Access  string `json:"access"`
-	Refresh string `json:"refresh"`
+// CreateIdentityKeyResponse contains the identity key returned when creating one.
+type CreateIdentityKeyResponse struct {
+	Key          string `json:"key"`
+	IdentityUUID string `json:"identity_uuid"`
+	Label        string `json:"label"`
 }
 
 // EmailThread represents an email conversation thread summary from the /api/email-inbox/ endpoint.
@@ -95,13 +94,13 @@ type EmailThreadDetail struct {
 // EmailMessage represents a single email within a thread, containing the full
 // email content including text and HTML versions.
 type EmailMessage struct {
-	ID          int       `json:"id"`
-	FromEmail   string    `json:"from_email"`
-	ToEmail     string    `json:"to_email"`
-	CC          string    `json:"cc"`
-	Subject     string    `json:"subject"`
-	TextContent string    `json:"text_content"`
-	HTMLContent string    `json:"html_content"`
+	ID          int          `json:"id"`
+	FromEmail   string       `json:"from_email"`
+	ToEmail     string       `json:"to_email"`
+	CC          string       `json:"cc"`
+	Subject     string       `json:"subject"`
+	TextContent string       `json:"text_content"`
+	HTMLContent string       `json:"html_content"`
 	Direction   string       `json:"direction"`
 	IsRead      bool         `json:"is_read"`
 	Attachments []Attachment `json:"attachments"`
@@ -152,15 +151,6 @@ type Error struct {
 	Detail string `json:"detail"`
 }
 
-// EncryptionMeta holds the user's E2E encryption metadata from the server.
-type EncryptionMeta struct {
-	ID               int    `json:"id"`
-	Salt             string `json:"salt"`
-	Verifier         string `json:"verifier"`
-	PublicKey        string `json:"public_key"`
-	ManagedMasterKey string `json:"managed_master_key"`
-}
-
 // Phone represents the user's assigned Ravi phone number.
 type Phone struct {
 	ID          int       `json:"id"`
@@ -192,14 +182,14 @@ type PhoneMessage struct {
 
 // EmailMessageDetail represents an individual email message (standalone, from /api/email-messages/).
 type EmailMessageDetail struct {
-	ID          int       `json:"id"`
-	URL         string    `json:"url"`
-	FromEmail   string    `json:"from_email"`
-	ToEmail     string    `json:"to_email"`
-	CC          string    `json:"cc"`
-	Subject     string    `json:"subject"`
-	TextContent string    `json:"text_content"`
-	HTMLContent string    `json:"html_content"`
+	ID          int          `json:"id"`
+	URL         string       `json:"url"`
+	FromEmail   string       `json:"from_email"`
+	ToEmail     string       `json:"to_email"`
+	CC          string       `json:"cc"`
+	Subject     string       `json:"subject"`
+	TextContent string       `json:"text_content"`
+	HTMLContent string       `json:"html_content"`
 	Direction   string       `json:"direction"`
 	IsRead      bool         `json:"is_read"`
 	Attachments []Attachment `json:"attachments"`

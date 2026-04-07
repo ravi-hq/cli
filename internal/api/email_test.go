@@ -201,7 +201,7 @@ func TestGetInboxID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode([]Email{{ID: 42, Email: "test@ravi.app"}})
+		json.NewEncoder(w).Encode([]Email{{ID: 42, Email: "test@ravi.id"}})
 	}))
 	defer server.Close()
 

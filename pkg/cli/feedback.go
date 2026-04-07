@@ -11,7 +11,7 @@ import (
 var feedbackCmd = &cobra.Command{
 	Use:   "feedback <message>",
 	Short: "Send feedback to the Ravi team",
-	Long:  "Send a feedback email to feedback@ravi.app from your Ravi email address.",
+	Long:  "Send a feedback email to feedback@ravi.id from your Ravi email address.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		message := args[0]
@@ -28,7 +28,7 @@ var feedbackCmd = &cobra.Command{
 		}
 
 		req := api.ComposeRequest{
-			ToEmail: "feedback@ravi.app",
+			ToEmail: "feedback@ravi.id",
 			Subject: subject,
 			Content: fmt.Sprintf("<p>%s</p>", message),
 		}

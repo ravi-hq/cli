@@ -28,7 +28,7 @@ Download the latest release from the
 or build from source:
 
 ```bash
-make build API_URL=https://ravi.app
+make build API_URL=https://ravi.id
 ```
 
 ### 2. Install the plugin

@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 env:
-  API_URL: https://ravi.app
+  API_URL: https://ravi.id
   HOMEBREW_TAP_REPO: ravi-hq/homebrew-tap
 
 jobs:

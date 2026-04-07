@@ -63,7 +63,7 @@ Download the latest release for your platform from the [releases page](https://g
 ```bash
 git clone https://github.com/ravi-hq/cli.git
 cd cli
-make build API_URL=https://ravi.app
+make build API_URL=https://ravi.id
 ```
 
 ### Claude Code Plugin
@@ -244,10 +244,10 @@ A `.ravi/config.json` in the current working directory overrides the global conf
 
 ```bash
 # Build with API URL (required)
-make build API_URL=https://ravi.app
+make build API_URL=https://ravi.id
 
 # Build for all platforms
-make build-all API_URL=https://ravi.app
+make build-all API_URL=https://ravi.id
 
 # Run tests
 make test

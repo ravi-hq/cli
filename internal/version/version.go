@@ -8,7 +8,7 @@ import (
 // Build-time information injected via ldflags.
 // Example:
 //
-//	go build -ldflags "-X github.com/.../version.Version=1.0.0 -X github.com/.../version.APIBaseURL=https://ravi.app"
+//	go build -ldflags "-X github.com/.../version.Version=1.0.0 -X github.com/.../version.APIBaseURL=https://ravi.id"
 var (
 	Version    = "dev"
 	Commit     = "unknown"

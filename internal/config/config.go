@@ -8,30 +8,20 @@ import (
 )
 
 const (
-	configDirName       = ".ravi"
-	authFileName        = "auth.json"
-	configFileName      = "config.json"
-	recoveryKeyFileName = "recovery-key.txt"
-	configDirPerm       = 0700
-	configFilePerm      = 0600
+	configDirName  = ".ravi"
+	configFileName = "config.json"
+	configDirPerm  = 0700
+	configFilePerm = 0600
 )
 
-// AuthConfig holds tokens and encryption keys.
-type AuthConfig struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	UserEmail    string `json:"user_email,omitempty"`
-	PINSalt      string `json:"pin_salt,omitempty"`
-	PublicKey    string `json:"public_key,omitempty"`
-	PrivateKey   string `json:"private_key,omitempty"`
-}
-
-// Config holds the active identity reference and bound tokens.
+// Config holds API keys and active identity info.
+// Single file at ~/.ravi/config.json (or .ravi/config.json in CWD for project overrides).
 type Config struct {
-	IdentityUUID      string `json:"identity_uuid,omitempty"`
-	IdentityName      string `json:"identity_name,omitempty"`
-	BoundAccessToken  string `json:"bound_access_token,omitempty"`
-	BoundRefreshToken string `json:"bound_refresh_token,omitempty"`
+	ManagementKey string `json:"management_key,omitempty"`
+	IdentityKey   string `json:"identity_key,omitempty"`
+	IdentityUUID  string `json:"identity_uuid,omitempty"`
+	IdentityName  string `json:"identity_name,omitempty"`
+	UserEmail     string `json:"user_email,omitempty"`
 }
 
 // Dir returns the global config directory (~/.ravi/).
@@ -44,59 +34,10 @@ func Dir() string {
 	return filepath.Join(homeDir, configDirName)
 }
 
-// RecoveryKeyPath returns the path to the recovery key file.
-func RecoveryKeyPath() string {
-	return filepath.Join(Dir(), recoveryKeyFileName)
-}
-
-// --- Auth ---
-
-// LoadAuth reads the auth config from ~/.ravi/auth.json.
-func LoadAuth() (*AuthConfig, error) {
-	path := filepath.Join(Dir(), authFileName)
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &AuthConfig{}, nil
-		}
-		return nil, fmt.Errorf("reading auth file: %w", err)
-	}
-
-	var cfg AuthConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parsing auth file: %w", err)
-	}
-
-	return &cfg, nil
-}
-
-// SaveAuth writes the auth config to ~/.ravi/auth.json with 0600 permissions.
-func SaveAuth(cfg *AuthConfig) error {
-	dir := Dir()
-	if err := os.MkdirAll(dir, configDirPerm); err != nil {
-		return fmt.Errorf("creating config directory: %w", err)
-	}
-
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return fmt.Errorf("encoding auth config: %w", err)
-	}
-
-	path := filepath.Join(dir, authFileName)
-	if err := os.WriteFile(path, data, configFilePerm); err != nil {
-		return fmt.Errorf("writing auth file: %w", err)
-	}
-
-	return nil
-}
-
-// --- Config (identity selector) ---
-
-// LoadConfig resolves the active identity config. Resolution order:
+// LoadConfig resolves the active config. Resolution order:
 // 1. .ravi/config.json in CWD (project-level override)
 // 2. ~/.ravi/config.json (global default)
-// 3. Falls back to empty Config (unscoped)
+// 3. Falls back to empty Config
 func LoadConfig() (*Config, error) {
 	// Try CWD first.
 	if cwd, err := os.Getwd(); err == nil {
@@ -120,7 +61,7 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("reading global config %s: %w", globalPath, err)
 	}
 
-	// Default: unscoped.
+	// Default: empty.
 	return &Config{}, nil
 }
 
@@ -193,20 +134,5 @@ func ClearAll() error {
 	if err := os.RemoveAll(dir); err != nil {
 		return fmt.Errorf("removing config directory: %w", err)
 	}
-	return nil
-}
-
-// SaveRecoveryKey writes the recovery key to ~/.ravi/recovery-key.txt with 0600 permissions.
-func SaveRecoveryKey(key string) error {
-	dir := Dir()
-	if err := os.MkdirAll(dir, configDirPerm); err != nil {
-		return fmt.Errorf("creating config directory: %w", err)
-	}
-
-	path := RecoveryKeyPath()
-	if err := os.WriteFile(path, []byte(key+"\n"), configFilePerm); err != nil {
-		return fmt.Errorf("writing recovery key: %w", err)
-	}
-
 	return nil
 }

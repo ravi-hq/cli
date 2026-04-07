@@ -14,14 +14,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// withTempHome is a test helper that temporarily changes the HOME environment variable
-// to allow testing functions that use os.UserHomeDir(). It returns a cleanup function.
+// withTempHome is a test helper that temporarily changes the HOME environment variable.
 func withTempHome(t *testing.T) (tmpDir string, cleanup func()) {
 	t.Helper()
 
 	tmpDir = t.TempDir()
 
-	// Save original HOME value
 	var homeEnvVar string
 	if runtime.GOOS == "windows" {
 		homeEnvVar = "USERPROFILE"
@@ -30,7 +28,6 @@ func withTempHome(t *testing.T) (tmpDir string, cleanup func()) {
 	}
 	originalHome := os.Getenv(homeEnvVar)
 
-	// Set HOME to temp directory
 	if err := os.Setenv(homeEnvVar, tmpDir); err != nil {
 		t.Fatalf("Failed to set %s: %v", homeEnvVar, err)
 	}
@@ -48,29 +45,22 @@ func newTestAuthStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show authentication status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			auth, err := config.LoadAuth()
+			cfg, err := config.LoadConfig()
 			if err != nil {
 				return err
 			}
 
-			// Check if authenticated (has both access and refresh tokens)
-			isAuthenticated := auth.AccessToken != "" && auth.RefreshToken != ""
+			isAuthenticated := cfg.ManagementKey != "" || cfg.IdentityKey != ""
 
 			if isAuthenticated {
-				if auth.UserEmail != "" {
-					result := map[string]interface{}{
-						"authenticated": true,
-						"email":         auth.UserEmail,
-					}
-					data, _ := json.MarshalIndent(result, "", "  ")
-					cmd.Println(string(data))
-				} else {
-					result := map[string]interface{}{
-						"authenticated": true,
-					}
-					data, _ := json.MarshalIndent(result, "", "  ")
-					cmd.Println(string(data))
+				result := map[string]interface{}{
+					"authenticated": true,
 				}
+				if cfg.UserEmail != "" {
+					result["email"] = cfg.UserEmail
+				}
+				data, _ := json.MarshalIndent(result, "", "  ")
+				cmd.Println(string(data))
 			} else {
 				result := map[string]interface{}{
 					"authenticated": false,
@@ -101,22 +91,18 @@ func newTestAuthLogoutCmd() *cobra.Command {
 }
 
 // TestAuthStatus_NotAuthenticated verifies that the status command shows
-// "not logged in" / authenticated: false when there are no stored credentials.
+// authenticated: false when there are no stored credentials.
 func TestAuthStatus_NotAuthenticated(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	// Verify config dir is now in temp directory
 	raviDir := config.Dir()
 	if !strings.HasPrefix(raviDir, tmpDir) {
 		t.Fatalf("config.Dir() = %v, expected prefix %v", raviDir, tmpDir)
 	}
 
-	// No config file exists, so user is not authenticated
-
 	cmd := newTestAuthStatusCmd()
 
-	// Capture output
 	stdout := &bytes.Buffer{}
 	cmd.SetOut(stdout)
 	cmd.SetErr(stdout)
@@ -126,17 +112,15 @@ func TestAuthStatus_NotAuthenticated(t *testing.T) {
 		t.Fatalf("Execute() returned error: %v", err)
 	}
 
-	output := stdout.String()
+	outputStr := stdout.String()
 
-	// Verify output indicates not authenticated
-	if !strings.Contains(output, "authenticated") {
-		t.Errorf("Status output should contain 'authenticated', got:\n%s", output)
+	if !strings.Contains(outputStr, "authenticated") {
+		t.Errorf("Status output should contain 'authenticated', got:\n%s", outputStr)
 	}
 
-	// Parse the JSON output to verify the value
 	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(output), &result); err != nil {
-		t.Fatalf("Failed to parse output as JSON: %v\nOutput was: %s", err, output)
+	if err := json.Unmarshal([]byte(outputStr), &result); err != nil {
+		t.Fatalf("Failed to parse output as JSON: %v\nOutput was: %s", err, outputStr)
 	}
 
 	authenticated, ok := result["authenticated"].(bool)
@@ -147,7 +131,6 @@ func TestAuthStatus_NotAuthenticated(t *testing.T) {
 		t.Errorf("Expected authenticated=false when no credentials exist, got true")
 	}
 
-	// Email should not be present
 	if _, hasEmail := result["email"]; hasEmail {
 		t.Error("Expected no email field when not authenticated")
 	}
@@ -156,28 +139,21 @@ func TestAuthStatus_NotAuthenticated(t *testing.T) {
 // TestAuthStatus_Authenticated verifies that the status command shows
 // the user's email and authenticated status when valid credentials exist.
 func TestAuthStatus_Authenticated(t *testing.T) {
-	tmpDir, cleanup := withTempHome(t)
+	_, cleanup := withTempHome(t)
 	defer cleanup()
 
-	// Create a config file with valid credentials
-	raviDir := filepath.Join(tmpDir, ".ravi")
-	if err := os.MkdirAll(raviDir, 0700); err != nil {
-		t.Fatalf("Failed to create directory: %v", err)
+	testConfig := &config.Config{
+		ManagementKey: "ravi_mgmt_test123",
+		IdentityKey:   "ravi_id_test456",
+		UserEmail:     "user@example.com",
 	}
 
-	testConfig := &config.AuthConfig{
-		AccessToken:  "test-access-token",
-		RefreshToken: "test-refresh-token",
-		UserEmail:    "user@example.com",
-	}
-
-	if err := config.SaveAuth(testConfig); err != nil {
+	if err := config.SaveGlobalConfig(testConfig); err != nil {
 		t.Fatalf("Failed to save config: %v", err)
 	}
 
 	cmd := newTestAuthStatusCmd()
 
-	// Capture output
 	stdout := &bytes.Buffer{}
 	cmd.SetOut(stdout)
 	cmd.SetErr(stdout)
@@ -189,13 +165,11 @@ func TestAuthStatus_Authenticated(t *testing.T) {
 
 	outputStr := stdout.String()
 
-	// Parse the JSON output
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(outputStr), &result); err != nil {
 		t.Fatalf("Failed to parse output as JSON: %v\nOutput was: %s", err, outputStr)
 	}
 
-	// Verify authenticated is true
 	authenticated, ok := result["authenticated"].(bool)
 	if !ok {
 		t.Errorf("Expected 'authenticated' to be a boolean, got: %T", result["authenticated"])
@@ -204,7 +178,6 @@ func TestAuthStatus_Authenticated(t *testing.T) {
 		t.Errorf("Expected authenticated=true when credentials exist, got false")
 	}
 
-	// Verify email is present and correct
 	email, ok := result["email"].(string)
 	if !ok {
 		t.Errorf("Expected 'email' to be a string, got: %T", result["email"])
@@ -214,41 +187,36 @@ func TestAuthStatus_Authenticated(t *testing.T) {
 	}
 }
 
-// TestAuthLogout_ClearsConfig verifies that the logout command removes
-// the stored credentials from the config file.
+// TestAuthLogout_ClearsConfig verifies that the logout command removes stored credentials.
 func TestAuthLogout_ClearsConfig(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	// Save the original output formatter and restore after test
 	originalFormatter := output.Current
 	defer func() { output.Current = originalFormatter }()
 
-	// Create a config file with credentials
 	raviDir := filepath.Join(tmpDir, ".ravi")
-	authPath := filepath.Join(raviDir, "auth.json")
 	if err := os.MkdirAll(raviDir, 0700); err != nil {
 		t.Fatalf("Failed to create directory: %v", err)
 	}
 
-	testConfig := &config.AuthConfig{
-		AccessToken:  "test-access-token",
-		RefreshToken: "test-refresh-token",
-		UserEmail:    "user@example.com",
+	testConfig := &config.Config{
+		ManagementKey: "ravi_mgmt_test123",
+		IdentityKey:   "ravi_id_test456",
+		UserEmail:     "user@example.com",
 	}
 
-	if err := config.SaveAuth(testConfig); err != nil {
+	if err := config.SaveGlobalConfig(testConfig); err != nil {
 		t.Fatalf("Failed to save config: %v", err)
 	}
 
-	// Verify auth file exists
-	if _, err := os.Stat(authPath); os.IsNotExist(err) {
-		t.Fatal("Auth file should exist before logout")
+	configPath := filepath.Join(raviDir, "config.json")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Fatal("Config file should exist before logout")
 	}
 
 	cmd := newTestAuthLogoutCmd()
 
-	// Capture output
 	stdout := &bytes.Buffer{}
 	cmd.SetOut(stdout)
 	cmd.SetErr(stdout)
@@ -260,25 +228,23 @@ func TestAuthLogout_ClearsConfig(t *testing.T) {
 
 	outputStr := stdout.String()
 
-	// Verify success message
 	if !strings.Contains(outputStr, "Logged out") || !strings.Contains(outputStr, "successfully") {
 		t.Errorf("Expected logout success message, got:\n%s", outputStr)
 	}
 
-	// Verify ravi directory is removed
 	if _, err := os.Stat(raviDir); !os.IsNotExist(err) {
 		t.Error("Ravi directory should not exist after logout")
 	}
 
-	// Verify that loading auth now returns empty credentials
-	loadedAuth, err := config.LoadAuth()
+	// Verify that loading config now returns empty
+	loadedConfig, err := config.LoadConfig()
 	if err != nil {
-		t.Fatalf("LoadAuth() returned error: %v", err)
+		t.Fatalf("LoadConfig() returned error: %v", err)
 	}
-	if loadedAuth.AccessToken != "" {
-		t.Errorf("Expected empty AccessToken after logout, got %q", loadedAuth.AccessToken)
+	if loadedConfig.ManagementKey != "" {
+		t.Errorf("Expected empty ManagementKey after logout, got %q", loadedConfig.ManagementKey)
 	}
-	if loadedAuth.RefreshToken != "" {
-		t.Errorf("Expected empty RefreshToken after logout, got %q", loadedAuth.RefreshToken)
+	if loadedConfig.IdentityKey != "" {
+		t.Errorf("Expected empty IdentityKey after logout, got %q", loadedConfig.IdentityKey)
 	}
 }

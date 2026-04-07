@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/ravi-hq/cli/internal/api"
-	"github.com/ravi-hq/cli/internal/crypto"
 	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -26,16 +25,6 @@ var secretListCmd = &cobra.Command{
 		entries, err := client.ListSecrets()
 		if err != nil {
 			return err
-		}
-
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-
-		for i := range entries {
-			entries[i].Value = tryDecrypt(entries[i].Value, kp)
-			entries[i].Notes = tryDecrypt(entries[i].Notes, kp)
 		}
 
 		if jsonOutput {
@@ -80,14 +69,6 @@ var secretGetCmd = &cobra.Command{
 			return fmt.Errorf("secret not found: %s", args[0])
 		}
 
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-
-		entry.Value = tryDecrypt(entry.Value, kp)
-		entry.Notes = tryDecrypt(entry.Notes, kp)
-
 		if jsonOutput {
 			return output.Current.Print(entry)
 		}
@@ -113,17 +94,6 @@ var secretSetCmd = &cobra.Command{
 			return err
 		}
 
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-		pubKeyB64 := encodePublicKey(kp)
-
-		encValue, err := crypto.Encrypt(args[1], pubKeyB64)
-		if err != nil {
-			return fmt.Errorf("encrypting value: %w", err)
-		}
-
 		// Upsert: check if key already exists, update if so.
 		existing, err := client.GetSecret(args[0])
 		if err != nil {
@@ -133,12 +103,12 @@ var secretSetCmd = &cobra.Command{
 		var result *api.SecretEntry
 		if existing != nil {
 			result, err = client.UpdateSecret(existing.UUID, map[string]interface{}{
-				"value": encValue,
+				"value": args[1],
 			})
 		} else {
 			result, err = client.CreateSecret(api.SecretEntry{
 				Key:   args[0],
-				Value: encValue,
+				Value: args[1],
 			})
 		}
 		if err != nil {

@@ -27,7 +27,7 @@ make lint                     # No lint errors
 
 ### 3. Verify build works
 ```bash
-make build API_URL=https://ravi.app
+make build API_URL=https://ravi.id
 ./bin/ravi version            # Confirm version output
 ```
 

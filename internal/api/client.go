@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -19,76 +18,60 @@ import (
 type Client struct {
 	httpClient *http.Client
 	baseURL    string
-	auth       *config.AuthConfig
-	bound      bool // true when operating with identity-scoped (bound) tokens
+	apiKey     string // management key or identity key
+	userEmail  string
 }
 
-// NewClient creates a scoped API client: loads auth + uses bound tokens from
-// the config chain when available. Most commands should use this.
+// NewClient creates an identity-scoped API client using the identity key.
+// Falls back to management key if no identity key is configured.
 func NewClient() (*Client, error) {
 	baseURL, err := version.GetAPIBaseURL()
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := config.LoadAuth()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load auth: %w", err)
-	}
-
-	// Load bound tokens from config if available.
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("loading config: %w", err)
 	}
 
-	// Use bound tokens for identity-scoped operations.
-	effectiveAuth := auth
-	isBound := false
-	if cfg.BoundAccessToken != "" {
-		effectiveAuth = &config.AuthConfig{
-			AccessToken:  cfg.BoundAccessToken,
-			RefreshToken: cfg.BoundRefreshToken,
-			UserEmail:    auth.UserEmail,
-			PINSalt:      auth.PINSalt,
-			PublicKey:     auth.PublicKey,
-			PrivateKey:    auth.PrivateKey,
-		}
-		isBound = true
-	} else if cfg.IdentityUUID != "" {
-		fmt.Fprintf(os.Stderr, "Warning: identity %q (%s) has no scoped token — using global token; re-run 'ravi identity use' to fix\n", cfg.IdentityName, cfg.IdentityUUID)
+	// Prefer identity key for resource-scoped operations.
+	apiKey := cfg.IdentityKey
+	if apiKey == "" {
+		apiKey = cfg.ManagementKey
 	}
 
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
-		auth:       effectiveAuth,
-		bound:      isBound,
+		apiKey:     apiKey,
+		userEmail:  cfg.UserEmail,
 	}, nil
 }
 
-// NewUnscopedClient creates an API client without identity scoping.
-// Use this for account-level operations (listing identities, switching identity).
-func NewUnscopedClient() (*Client, error) {
+// NewManagementClient creates an API client using the management key.
+// Use this for account-level operations (listing identities, managing keys).
+func NewManagementClient() (*Client, error) {
 	baseURL, err := version.GetAPIBaseURL()
 	if err != nil {
 		return nil, err
 	}
 
-	auth, err := config.LoadAuth()
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load auth: %w", err)
+		return nil, fmt.Errorf("loading config: %w", err)
 	}
 
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
-		auth:       auth,
+		apiKey:     cfg.ManagementKey,
+		userEmail:  cfg.UserEmail,
 	}, nil
 }
 
-// NewClientWithTokens creates a client with explicit tokens (for login flow).
-func NewClientWithTokens(access, refresh string) (*Client, error) {
+// NewUnauthenticatedClient creates an API client with no auth (for login flow).
+func NewUnauthenticatedClient() (*Client, error) {
 	baseURL, err := version.GetAPIBaseURL()
 	if err != nil {
 		return nil, err
@@ -97,10 +80,6 @@ func NewClientWithTokens(access, refresh string) (*Client, error) {
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		baseURL:    strings.TrimSuffix(baseURL, "/"),
-		auth: &config.AuthConfig{
-			AccessToken:  access,
-			RefreshToken: refresh,
-		},
 	}, nil
 }
 
@@ -125,32 +104,20 @@ func (c *Client) doRequest(method, path string, body interface{}, auth bool) (*h
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	if auth && c.auth.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.auth.AccessToken)
+	if auth && c.apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	}
 
 	return c.httpClient.Do(req)
 }
 
-// doAuthenticatedRequest performs a request with authentication and auto token refresh.
+// doAuthenticatedRequest performs a request with authentication.
 func (c *Client) doAuthenticatedRequest(method, path string, body interface{}, result interface{}) error {
 	resp, err := c.doRequest(method, path, body, true)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-
-	// If 401, try to refresh token and retry once.
-	if resp.StatusCode == http.StatusUnauthorized && c.auth.RefreshToken != "" {
-		if err := c.RefreshAccessToken(); err != nil {
-			return fmt.Errorf("session expired, run `ravi auth login` to re-authenticate: %w", err)
-		}
-		resp, err = c.doRequest(method, path, body, true)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-	}
 
 	return c.parseResponse(resp, result)
 }
@@ -194,82 +161,14 @@ func (c *Client) parseResponse(resp *http.Response, result interface{}) error {
 	return nil
 }
 
-// RefreshAccessToken refreshes the access token using the refresh token.
-func (c *Client) RefreshAccessToken() error {
-	req := RefreshRequest{Refresh: c.auth.RefreshToken}
-
-	resp, err := c.doRequest(http.MethodPost, PathTokenRefresh, req, false)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	var result RefreshResponse
-	if err := c.parseResponse(resp, &result); err != nil {
-		return err
-	}
-
-	// Note: there is a narrow TOCTOU race if two CLI processes refresh bound
-	// tokens concurrently. The last writer wins. Acceptable for a CLI tool.
-
-	// Persist BEFORE updating in-memory state
-	if c.bound {
-		cfg, err := config.LoadConfig()
-		if err != nil {
-			return fmt.Errorf("loading config to save refreshed tokens: %w", err)
-		}
-		cfg.BoundAccessToken = result.Access
-		if result.Refresh != "" {
-			cfg.BoundRefreshToken = result.Refresh
-		}
-		if err := config.SaveConfig(cfg); err != nil {
-			return fmt.Errorf("saving refreshed bound tokens: %w", err)
-		}
-	} else {
-		newAuth := *c.auth // copy
-		newAuth.AccessToken = result.Access
-		if result.Refresh != "" {
-			newAuth.RefreshToken = result.Refresh
-		}
-		if err := config.SaveAuth(&newAuth); err != nil {
-			return fmt.Errorf("saving refreshed tokens: %w", err)
-		}
-	}
-
-	// Only update in-memory state after successful persist
-	c.auth.AccessToken = result.Access
-	if result.Refresh != "" {
-		c.auth.RefreshToken = result.Refresh
-	}
-	return nil
-}
-
-// IsAuthenticated checks if the client has valid auth tokens.
+// IsAuthenticated checks if the client has an API key.
 func (c *Client) IsAuthenticated() bool {
-	return c.auth.AccessToken != "" && c.auth.RefreshToken != ""
+	return c.apiKey != ""
 }
 
 // GetUserEmail returns the stored user email.
 func (c *Client) GetUserEmail() string {
-	return c.auth.UserEmail
-}
-
-// BindIdentity calls the bind-identity endpoint to get identity-scoped tokens.
-func (c *Client) BindIdentity(identityUUID string) (*BindIdentityResponse, error) {
-	req := map[string]string{
-		"identity": identityUUID,
-	}
-	var result BindIdentityResponse
-	if err := c.doAuthenticatedRequest(http.MethodPost, PathBindIdentity, req, &result); err != nil {
-		return nil, err
-	}
-	if result.Access == "" {
-		return nil, fmt.Errorf("bind-identity returned empty access token")
-	}
-	if result.Refresh == "" {
-		return nil, fmt.Errorf("bind-identity returned empty refresh token")
-	}
-	return &result, nil
+	return c.userEmail
 }
 
 // BuildURL builds a full URL with query parameters.

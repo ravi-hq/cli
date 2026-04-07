@@ -20,7 +20,7 @@ LDFLAGS := -ldflags "\
 build install build-all: _require-api-url
 
 _require-api-url:
-	@test -n "$(API_URL)" || (echo "Error: API_URL is required. Usage: make build API_URL=https://ravi.app" && exit 1)
+	@test -n "$(API_URL)" || (echo "Error: API_URL is required. Usage: make build API_URL=https://ravi.id" && exit 1)
 
 build:
 	go build $(LDFLAGS) -o bin/ravi ./cmd/ravi

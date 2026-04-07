@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"encoding/base64"
 	"fmt"
 
 	"github.com/ravi-hq/cli/internal/api"
-	"github.com/ravi-hq/cli/internal/crypto"
 	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -17,7 +15,7 @@ var (
 	pwNoSpecial    bool
 	pwNoDigits     bool
 	pwExcludeChars string
-	pwUsername     string
+	pwUsername      string
 	pwPassword     string
 	pwNotes        string
 	pwDomain       string
@@ -40,15 +38,6 @@ var pwListCmd = &cobra.Command{
 		entries, err := client.ListPasswords()
 		if err != nil {
 			return err
-		}
-
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-
-		for i := range entries {
-			entries[i].Username = tryDecrypt(entries[i].Username, kp)
 		}
 
 		if jsonOutput {
@@ -90,15 +79,6 @@ var pwGetCmd = &cobra.Command{
 			return err
 		}
 
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-
-		entry.Username = tryDecrypt(entry.Username, kp)
-		entry.Password = tryDecrypt(entry.Password, kp)
-		entry.Notes = tryDecrypt(entry.Notes, kp)
-
 		if jsonOutput {
 			return output.Current.Print(entry)
 		}
@@ -125,12 +105,6 @@ var pwCreateCmd = &cobra.Command{
 			return err
 		}
 
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-		pubKeyB64 := encodePublicKey(kp)
-
 		password := pwPassword
 		if pwGenerate || password == "" {
 			opts := api.PasswordGenOpts{
@@ -149,24 +123,11 @@ var pwCreateCmd = &cobra.Command{
 			}
 		}
 
-		encUsername, err := crypto.Encrypt(pwUsername, pubKeyB64)
-		if err != nil {
-			return fmt.Errorf("encrypting username: %w", err)
-		}
-		encPassword, err := crypto.Encrypt(password, pubKeyB64)
-		if err != nil {
-			return fmt.Errorf("encrypting password: %w", err)
-		}
-		encNotes, err := crypto.Encrypt(pwNotes, pubKeyB64)
-		if err != nil {
-			return fmt.Errorf("encrypting notes: %w", err)
-		}
-
 		entry := api.PasswordEntry{
 			Domain:   args[0],
-			Username: encUsername,
-			Password: encPassword,
-			Notes:    encNotes,
+			Username: pwUsername,
+			Password: password,
+			Notes:    pwNotes,
 		}
 
 		result, err := client.CreatePassword(entry)
@@ -193,36 +154,18 @@ var pwEditCmd = &cobra.Command{
 			return err
 		}
 
-		kp, err := ensureKeyPair()
-		if err != nil {
-			return err
-		}
-		pubKeyB64 := encodePublicKey(kp)
-
 		fields := map[string]interface{}{}
 		if cmd.Flags().Changed("domain") {
 			fields["domain"] = pwDomain
 		}
 		if cmd.Flags().Changed("username") {
-			enc, err := crypto.Encrypt(pwUsername, pubKeyB64)
-			if err != nil {
-				return fmt.Errorf("encrypting username: %w", err)
-			}
-			fields["username"] = enc
+			fields["username"] = pwUsername
 		}
 		if cmd.Flags().Changed("password") {
-			enc, err := crypto.Encrypt(pwPassword, pubKeyB64)
-			if err != nil {
-				return fmt.Errorf("encrypting password: %w", err)
-			}
-			fields["password"] = enc
+			fields["password"] = pwPassword
 		}
 		if cmd.Flags().Changed("notes") {
-			enc, err := crypto.Encrypt(pwNotes, pubKeyB64)
-			if err != nil {
-				return fmt.Errorf("encrypting notes: %w", err)
-			}
-			fields["notes"] = enc
+			fields["notes"] = pwNotes
 		}
 
 		if len(fields) == 0 {
@@ -294,11 +237,6 @@ var pwGenerateCmd = &cobra.Command{
 		fmt.Println(gen.Password)
 		return nil
 	},
-}
-
-// encodePublicKey converts a KeyPair's public key to base64.
-func encodePublicKey(kp *crypto.KeyPair) string {
-	return base64.StdEncoding.EncodeToString(kp.PublicKey[:])
 }
 
 func init() {

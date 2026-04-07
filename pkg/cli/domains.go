@@ -10,7 +10,7 @@ var domainsCmd = &cobra.Command{
 	Use:   "domains",
 	Short: "List available email domains",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewUnscopedClient()
+		client, err := api.NewManagementClient()
 		if err != nil {
 			return err
 		}

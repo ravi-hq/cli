@@ -34,115 +34,6 @@ func withTempHome(t *testing.T) (tmpDir string, cleanup func()) {
 	return tmpDir, cleanup
 }
 
-// --- AuthConfig tests ---
-
-func TestLoadAuth_NoFile(t *testing.T) {
-	_, cleanup := withTempHome(t)
-	defer cleanup()
-
-	cfg, err := LoadAuth()
-	if err != nil {
-		t.Fatalf("LoadAuth() error = %v, want nil", err)
-	}
-	if cfg.AccessToken != "" {
-		t.Errorf("AccessToken = %v, want empty", cfg.AccessToken)
-	}
-}
-
-func TestSaveAuth_CreatesFile(t *testing.T) {
-	tmpDir, cleanup := withTempHome(t)
-	defer cleanup()
-
-	cfg := &AuthConfig{
-		AccessToken:  "test-access",
-		RefreshToken: "test-refresh",
-		UserEmail:    "test@example.com",
-		PINSalt:      "salt123",
-		PublicKey:    "pub123",
-		PrivateKey:   "priv123",
-	}
-
-	if err := SaveAuth(cfg); err != nil {
-		t.Fatalf("SaveAuth() error = %v", err)
-	}
-
-	// Verify file exists at auth.json (not config.json).
-	authPath := filepath.Join(tmpDir, ".ravi", "auth.json")
-	if _, err := os.Stat(authPath); os.IsNotExist(err) {
-		t.Fatal("auth.json was not created")
-	}
-
-	// Verify permissions.
-	info, err := os.Stat(authPath)
-	if err != nil {
-		t.Fatalf("Stat error: %v", err)
-	}
-	if info.Mode().Perm() != 0600 {
-		t.Errorf("File permissions = %o, want 0600", info.Mode().Perm())
-	}
-}
-
-func TestSaveAuth_LoadAuth_RoundTrip(t *testing.T) {
-	_, cleanup := withTempHome(t)
-	defer cleanup()
-
-	original := &AuthConfig{
-		AccessToken:  "rt-access",
-		RefreshToken: "rt-refresh",
-		UserEmail:    "rt@example.com",
-		PINSalt:      "salt",
-		PublicKey:    "pub",
-		PrivateKey:   "priv",
-	}
-
-	if err := SaveAuth(original); err != nil {
-		t.Fatalf("SaveAuth() error = %v", err)
-	}
-
-	loaded, err := LoadAuth()
-	if err != nil {
-		t.Fatalf("LoadAuth() error = %v", err)
-	}
-
-	if loaded.AccessToken != original.AccessToken {
-		t.Errorf("AccessToken = %v, want %v", loaded.AccessToken, original.AccessToken)
-	}
-	if loaded.RefreshToken != original.RefreshToken {
-		t.Errorf("RefreshToken = %v, want %v", loaded.RefreshToken, original.RefreshToken)
-	}
-	if loaded.UserEmail != original.UserEmail {
-		t.Errorf("UserEmail = %v, want %v", loaded.UserEmail, original.UserEmail)
-	}
-	if loaded.PINSalt != original.PINSalt {
-		t.Errorf("PINSalt = %v, want %v", loaded.PINSalt, original.PINSalt)
-	}
-	if loaded.PublicKey != original.PublicKey {
-		t.Errorf("PublicKey = %v, want %v", loaded.PublicKey, original.PublicKey)
-	}
-	if loaded.PrivateKey != original.PrivateKey {
-		t.Errorf("PrivateKey = %v, want %v", loaded.PrivateKey, original.PrivateKey)
-	}
-}
-
-func TestLoadAuth_CorruptFile(t *testing.T) {
-	tmpDir, cleanup := withTempHome(t)
-	defer cleanup()
-
-	raviDir := filepath.Join(tmpDir, ".ravi")
-	os.MkdirAll(raviDir, 0700)
-	os.WriteFile(filepath.Join(raviDir, "auth.json"), []byte("not json"), 0600)
-
-	_, err := LoadAuth()
-	if err == nil {
-		t.Error("LoadAuth() error = nil, want error for corrupt file")
-	}
-	if !strings.Contains(err.Error(), "parsing") {
-		t.Errorf("Error = %v, want 'parsing' in message", err)
-	}
-}
-
-// --- Config (identity selector) tests ---
-
 func TestLoadConfig_Default(t *testing.T) {
 	_, cleanup := withTempHome(t)
 	defer cleanup()
@@ -154,13 +45,22 @@ func TestLoadConfig_Default(t *testing.T) {
 	if cfg.IdentityUUID != "" {
 		t.Errorf("IdentityUUID = %v, want empty", cfg.IdentityUUID)
 	}
+	if cfg.ManagementKey != "" {
+		t.Errorf("ManagementKey = %v, want empty", cfg.ManagementKey)
+	}
 }
 
 func TestSaveGlobalConfig_LoadConfig(t *testing.T) {
 	_, cleanup := withTempHome(t)
 	defer cleanup()
 
-	if err := SaveGlobalConfig(&Config{IdentityUUID: "uuid-123", IdentityName: "Research"}); err != nil {
+	if err := SaveGlobalConfig(&Config{
+		ManagementKey: "ravi_mgmt_test123",
+		IdentityKey:   "ravi_id_test456",
+		IdentityUUID:  "uuid-123",
+		IdentityName:  "Research",
+		UserEmail:     "user@example.com",
+	}); err != nil {
 		t.Fatalf("SaveGlobalConfig() error = %v", err)
 	}
 
@@ -168,11 +68,20 @@ func TestSaveGlobalConfig_LoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
+	if cfg.ManagementKey != "ravi_mgmt_test123" {
+		t.Errorf("ManagementKey = %v, want 'ravi_mgmt_test123'", cfg.ManagementKey)
+	}
+	if cfg.IdentityKey != "ravi_id_test456" {
+		t.Errorf("IdentityKey = %v, want 'ravi_id_test456'", cfg.IdentityKey)
+	}
 	if cfg.IdentityUUID != "uuid-123" {
 		t.Errorf("IdentityUUID = %v, want 'uuid-123'", cfg.IdentityUUID)
 	}
 	if cfg.IdentityName != "Research" {
 		t.Errorf("IdentityName = %v, want 'Research'", cfg.IdentityName)
+	}
+	if cfg.UserEmail != "user@example.com" {
+		t.Errorf("UserEmail = %v, want 'user@example.com'", cfg.UserEmail)
 	}
 }
 
@@ -258,10 +167,10 @@ func TestSaveConfig_WritesCWD_WhenLocalExists(t *testing.T) {
 	defer os.Chdir(origWD)
 
 	cfg := &Config{
-		IdentityUUID:      "local-uuid",
-		IdentityName:      "Local",
-		BoundAccessToken:  "local-access",
-		BoundRefreshToken: "local-refresh",
+		ManagementKey: "ravi_mgmt_local",
+		IdentityKey:   "ravi_id_local",
+		IdentityUUID:  "local-uuid",
+		IdentityName:  "Local",
 	}
 	if err := SaveConfig(cfg); err != nil {
 		t.Fatalf("SaveConfig() error = %v", err)
@@ -298,10 +207,10 @@ func TestSaveConfig_WritesGlobal_WhenNoCWDConfig(t *testing.T) {
 	defer os.Chdir(origWD)
 
 	cfg := &Config{
-		IdentityUUID:      "global-uuid",
-		IdentityName:      "Global",
-		BoundAccessToken:  "global-access",
-		BoundRefreshToken: "global-refresh",
+		ManagementKey: "ravi_mgmt_global",
+		IdentityKey:   "ravi_id_global",
+		IdentityUUID:  "global-uuid",
+		IdentityName:  "Global",
 	}
 	if err := SaveConfig(cfg); err != nil {
 		t.Fatalf("SaveConfig() error = %v", err)
@@ -327,10 +236,11 @@ func TestSaveConfig_RoundTrip(t *testing.T) {
 	defer cleanup()
 
 	original := &Config{
-		IdentityUUID:      "rt-uuid",
-		IdentityName:      "RoundTrip",
-		BoundAccessToken:  "rt-access",
-		BoundRefreshToken: "rt-refresh",
+		ManagementKey: "ravi_mgmt_rt",
+		IdentityKey:   "ravi_id_rt",
+		IdentityUUID:  "rt-uuid",
+		IdentityName:  "RoundTrip",
+		UserEmail:     "rt@example.com",
 	}
 
 	// Save via SaveConfig (falls to global since no CWD config).
@@ -344,17 +254,20 @@ func TestSaveConfig_RoundTrip(t *testing.T) {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
 
+	if loaded.ManagementKey != original.ManagementKey {
+		t.Errorf("ManagementKey = %v, want %v", loaded.ManagementKey, original.ManagementKey)
+	}
+	if loaded.IdentityKey != original.IdentityKey {
+		t.Errorf("IdentityKey = %v, want %v", loaded.IdentityKey, original.IdentityKey)
+	}
 	if loaded.IdentityUUID != original.IdentityUUID {
 		t.Errorf("IdentityUUID = %v, want %v", loaded.IdentityUUID, original.IdentityUUID)
 	}
 	if loaded.IdentityName != original.IdentityName {
 		t.Errorf("IdentityName = %v, want %v", loaded.IdentityName, original.IdentityName)
 	}
-	if loaded.BoundAccessToken != original.BoundAccessToken {
-		t.Errorf("BoundAccessToken = %v, want %v", loaded.BoundAccessToken, original.BoundAccessToken)
-	}
-	if loaded.BoundRefreshToken != original.BoundRefreshToken {
-		t.Errorf("BoundRefreshToken = %v, want %v", loaded.BoundRefreshToken, original.BoundRefreshToken)
+	if loaded.UserEmail != original.UserEmail {
+		t.Errorf("UserEmail = %v, want %v", loaded.UserEmail, original.UserEmail)
 	}
 }
 
@@ -365,8 +278,7 @@ func TestClearAll(t *testing.T) {
 	defer cleanup()
 
 	// Create some state.
-	SaveAuth(&AuthConfig{AccessToken: "token"})
-	SaveGlobalConfig(&Config{IdentityUUID: "uuid-123", IdentityName: "Test"})
+	SaveGlobalConfig(&Config{ManagementKey: "key", IdentityUUID: "uuid-123", IdentityName: "Test"})
 
 	raviDir := filepath.Join(tmpDir, ".ravi")
 	if _, err := os.Stat(raviDir); os.IsNotExist(err) {
@@ -382,34 +294,6 @@ func TestClearAll(t *testing.T) {
 	}
 }
 
-// --- Recovery key ---
-
-func TestSaveRecoveryKey(t *testing.T) {
-	tmpDir, cleanup := withTempHome(t)
-	defer cleanup()
-
-	if err := SaveRecoveryKey("base64-seed-data"); err != nil {
-		t.Fatalf("SaveRecoveryKey() error = %v", err)
-	}
-
-	path := filepath.Join(tmpDir, ".ravi", "recovery-key.txt")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("ReadFile() error = %v", err)
-	}
-	if strings.TrimSpace(string(data)) != "base64-seed-data" {
-		t.Errorf("Recovery key = %q, want 'base64-seed-data'", strings.TrimSpace(string(data)))
-	}
-
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("Stat error: %v", err)
-	}
-	if info.Mode().Perm() != 0600 {
-		t.Errorf("File permissions = %o, want 0600", info.Mode().Perm())
-	}
-}
-
 // --- Dir/path tests ---
 
 func TestDir(t *testing.T) {
@@ -421,11 +305,11 @@ func TestDir(t *testing.T) {
 
 // --- Directory permissions ---
 
-func TestSaveAuth_DirectoryPermissions(t *testing.T) {
+func TestSaveGlobalConfig_DirectoryPermissions(t *testing.T) {
 	tmpDir, cleanup := withTempHome(t)
 	defer cleanup()
 
-	SaveAuth(&AuthConfig{AccessToken: "test"})
+	SaveGlobalConfig(&Config{ManagementKey: "test"})
 
 	raviDir := filepath.Join(tmpDir, ".ravi")
 	info, err := os.Stat(raviDir)
@@ -434,5 +318,21 @@ func TestSaveAuth_DirectoryPermissions(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0700 {
 		t.Errorf("Directory permissions = %o, want 0700", info.Mode().Perm())
+	}
+}
+
+func TestSaveGlobalConfig_FilePermissions(t *testing.T) {
+	tmpDir, cleanup := withTempHome(t)
+	defer cleanup()
+
+	SaveGlobalConfig(&Config{ManagementKey: "test"})
+
+	configPath := filepath.Join(tmpDir, ".ravi", "config.json")
+	info, err := os.Stat(configPath)
+	if err != nil {
+		t.Fatalf("Stat error: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Errorf("File permissions = %o, want 0600", info.Mode().Perm())
 	}
 }

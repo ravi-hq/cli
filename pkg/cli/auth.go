@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/ravi-hq/cli/internal/api"
 	"github.com/ravi-hq/cli/internal/auth"
 	"github.com/ravi-hq/cli/internal/config"
 	"github.com/ravi-hq/cli/internal/output"
@@ -44,7 +43,7 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show authentication status",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewUnscopedClient()
+		cfg, err := config.LoadConfig()
 		if err != nil {
 			output.Current.Print(map[string]interface{}{
 				"authenticated": false,
@@ -53,28 +52,24 @@ var statusCmd = &cobra.Command{
 			return nil
 		}
 
-		if client.IsAuthenticated() {
+		isAuthenticated := cfg.ManagementKey != "" || cfg.IdentityKey != ""
+
+		if isAuthenticated {
 			result := map[string]interface{}{
 				"authenticated": true,
 			}
-			if email := client.GetUserEmail(); email != "" {
-				result["email"] = email
+			if cfg.UserEmail != "" {
+				result["email"] = cfg.UserEmail
 			}
-			cfg, err := config.LoadConfig()
-			if err != nil {
-				result["config_error"] = err.Error()
-			} else if cfg.IdentityUUID != "" {
+			if cfg.IdentityUUID != "" {
 				result["identity"] = cfg.IdentityName
 				result["identity_uuid"] = cfg.IdentityUUID
 			}
 			output.Current.Print(result)
 		} else {
-			if err := config.ClearAll(); err != nil {
-				fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not clear old credentials: %v\n", err)
-			}
 			output.Current.Print(map[string]interface{}{
 				"authenticated": false,
-				"message":       "Session expired. Run `ravi auth login` to re-authenticate.",
+				"message":       "Not authenticated. Run `ravi auth login` to authenticate.",
 			})
 		}
 		return nil

@@ -23,11 +23,14 @@ func (c *Client) RequestDeviceCode() (*DeviceCodeResponse, error) {
 	return &result, nil
 }
 
-// PollForToken polls for the device token
+// PollForToken polls for the device token with long polling.
 // Returns (token_response, error_code, error)
 // error_code is "authorization_pending" or "expired_token" on expected errors
 func (c *Client) PollForToken(deviceCode string) (*DeviceTokenResponse, string, error) {
-	req := DeviceTokenRequest{DeviceCode: deviceCode}
+	req := DeviceTokenRequest{
+		DeviceCode: deviceCode,
+		Wait:       true,
+	}
 
 	resp, err := c.doRequest(http.MethodPost, PathDeviceToken, req, false)
 	if err != nil {
@@ -59,4 +62,17 @@ func (c *Client) PollForToken(deviceCode string) (*DeviceTokenResponse, string, 
 	}
 
 	return nil, "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+}
+
+// CreateIdentityKey creates an identity-scoped API key for the given identity.
+func (c *Client) CreateIdentityKey(identityUUID, label string) (*CreateIdentityKeyResponse, error) {
+	req := CreateIdentityKeyRequest{
+		IdentityUUID: identityUUID,
+		Label:        label,
+	}
+	var result CreateIdentityKeyResponse
+	if err := c.doAuthenticatedRequest(http.MethodPost, PathIdentityKeys, req, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

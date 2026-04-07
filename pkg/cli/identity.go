@@ -22,7 +22,7 @@ var identityListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all identities",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewUnscopedClient()
+		client, err := api.NewManagementClient()
 		if err != nil {
 			return err
 		}
@@ -40,7 +40,7 @@ var identityCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new identity",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewUnscopedClient()
+		client, err := api.NewManagementClient()
 		if err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ Writes to .ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json.`
 		target := args[0]
 
 		// Resolve identity by UUID.
-		client, err := api.NewUnscopedClient()
+		client, err := api.NewManagementClient()
 		if err != nil {
 			return err
 		}
@@ -85,18 +85,25 @@ Writes to .ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json.`
 			return fmt.Errorf("identity %q not found", target)
 		}
 
-		// Bind identity to get identity-scoped tokens.
-		bindResult, err := client.BindIdentity(matched.UUID)
+		// Create identity key for the selected identity.
+		keyResp, err := client.CreateIdentityKey(matched.UUID, "cli")
 		if err != nil {
-			return fmt.Errorf("binding identity: %w", err)
+			return fmt.Errorf("creating identity key: %w", err)
 		}
 
-		// Save bound tokens + identity info to config (CWD-aware).
+		// Load existing config to preserve management key and user email.
+		existingCfg, err := config.LoadConfig()
+		if err != nil {
+			return fmt.Errorf("loading config: %w", err)
+		}
+
+		// Save identity key + identity info to config (CWD-aware).
 		if err := config.SaveConfig(&config.Config{
-			IdentityUUID:      matched.UUID,
-			IdentityName:      matched.Name,
-			BoundAccessToken:  bindResult.Access,
-			BoundRefreshToken: bindResult.Refresh,
+			ManagementKey: existingCfg.ManagementKey,
+			IdentityKey:   keyResp.Key,
+			IdentityUUID:  matched.UUID,
+			IdentityName:  matched.Name,
+			UserEmail:     existingCfg.UserEmail,
 		}); err != nil {
 			return err
 		}
