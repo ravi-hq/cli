@@ -23,4 +23,7 @@ const (
 	// Key management endpoints
 	PathManagementKeys = "/api/auth/keys/management/"
 	PathIdentityKeys   = "/api/auth/keys/identity/"
+
+	// SSO endpoints
+	PathSSOToken = "/api/sso/token/"
 )

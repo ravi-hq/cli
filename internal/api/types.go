@@ -323,6 +323,13 @@ type EmailDomain struct {
 	CreatedDt  string `json:"created_dt"`
 }
 
+// SSOTokenResponse contains the short-lived SSO token returned by the server.
+// The Token has an "rvt_" prefix and a 5-minute TTL.
+type SSOTokenResponse struct {
+	Token     string `json:"token"`
+	ExpiresAt string `json:"expires_at"`
+}
+
 // RateLimitError represents a 429 Too Many Requests response from the API.
 type RateLimitError struct {
 	Detail            string `json:"detail"`

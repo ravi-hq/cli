@@ -1063,7 +1063,7 @@ func TestRootCmd_SubcommandRegistration(t *testing.T) {
 		subNames[cmd.Name()] = true
 	}
 
-	expected := []string{"get", "inbox", "message", "passwords", "secrets", "contacts", "identity", "domains", "auth", "email", "feedback"}
+	expected := []string{"get", "inbox", "message", "passwords", "secrets", "contacts", "identity", "domains", "auth", "email", "feedback", "sso"}
 	for _, name := range expected {
 		if !subNames[name] {
 			t.Errorf("rootCmd missing subcommand %q", name)
