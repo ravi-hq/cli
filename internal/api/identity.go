@@ -14,13 +14,18 @@ func (c *Client) ListIdentities() ([]Identity, error) {
 // CreateIdentity creates a new identity with the given name and optional email address.
 // Email accepts three formats: local part only (e.g. "shopping"), full email
 // (e.g. "shopping@acme.com"), or empty string for auto-generated.
-func (c *Client) CreateIdentity(name string, email string) (*Identity, error) {
-	req := map[string]string{}
+// When provisionPhone is true, the server provisions a phone number and links it
+// to the identity (requires an active paid subscription).
+func (c *Client) CreateIdentity(name string, email string, provisionPhone bool) (*Identity, error) {
+	req := map[string]any{}
 	if name != "" {
 		req["name"] = name
 	}
 	if email != "" {
 		req["email"] = email
+	}
+	if provisionPhone {
+		req["provision_phone"] = true
 	}
 	var identity Identity
 	if err := c.doAuthenticatedRequest(http.MethodPost, PathIdentities, req, &identity); err != nil {
@@ -37,4 +42,3 @@ func (c *Client) ListDomains() ([]EmailDomain, error) {
 	}
 	return domains, nil
 }
-
