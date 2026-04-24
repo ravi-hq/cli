@@ -12,6 +12,7 @@ import (
 var identityNameFlag string
 var identityEmailFlag string
 var identityProvisionPhoneFlag bool
+var identityProvisionPhoneCountryFlag string
 
 var identityCmd = &cobra.Command{
 	Use:   "identity",
@@ -47,6 +48,30 @@ var identityCreateCmd = &cobra.Command{
 		}
 
 		identity, err := client.CreateIdentity(identityNameFlag, identityEmailFlag, identityProvisionPhoneFlag)
+		if err != nil {
+			return err
+		}
+
+		return output.Current.Print(identity)
+	},
+}
+
+var identityProvisionPhoneCmd = &cobra.Command{
+	Use:   "provision-phone <uuid>",
+	Short: "Provision a phone number for an existing identity",
+	Long: `Provision a phone number and link it to an existing identity that
+was created without one. Requires a paid plan. Fails with an error if the
+identity already has a phone number.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		uuid := args[0]
+
+		client, err := api.NewManagementClient()
+		if err != nil {
+			return err
+		}
+
+		identity, err := client.ProvisionPhoneForIdentity(uuid, identityProvisionPhoneCountryFlag)
 		if err != nil {
 			return err
 		}
@@ -122,8 +147,11 @@ func init() {
 	identityCreateCmd.Flags().StringVar(&identityEmailFlag, "email", "", "Email address: local part (e.g. 'myagent'), full email (e.g. 'myagent@custom.com'), or omit for auto-generated")
 	identityCreateCmd.Flags().BoolVar(&identityProvisionPhoneFlag, "provision-phone", false, "Also provision a phone number for the new identity (requires a paid plan)")
 
+	identityProvisionPhoneCmd.Flags().StringVar(&identityProvisionPhoneCountryFlag, "country-code", "", "ISO country code for the phone number (defaults to US)")
+
 	identityCmd.AddCommand(identityListCmd)
 	identityCmd.AddCommand(identityCreateCmd)
+	identityCmd.AddCommand(identityProvisionPhoneCmd)
 	identityCmd.AddCommand(identityUseCmd)
 	rootCmd.AddCommand(identityCmd)
 }
