@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -158,6 +159,72 @@ func TestCreateIdentity_Error(t *testing.T) {
 	_, err := client.CreateIdentity("Bad", "", false)
 	if err == nil {
 		t.Fatal("CreateIdentity() error = nil, want error")
+	}
+}
+
+func TestProvisionPhoneForIdentity_Success(t *testing.T) {
+	const targetUUID = "abc-123"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("Expected POST, got %s", r.Method)
+		}
+		wantPath := PathIdentities + targetUUID + "/provision-phone/"
+		if r.URL.Path != wantPath {
+			t.Errorf("Expected path %s, got %s", wantPath, r.URL.Path)
+		}
+		var req map[string]any
+		json.NewDecoder(r.Body).Decode(&req)
+		if _, ok := req["country_code"]; ok {
+			t.Error("Expected country_code to be omitted when empty")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Identity{UUID: targetUUID, Name: "Demo", Phone: "+15551234567"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	identity, err := client.ProvisionPhoneForIdentity(targetUUID, "")
+	if err != nil {
+		t.Fatalf("ProvisionPhoneForIdentity() error = %v", err)
+	}
+	if identity.Phone != "+15551234567" {
+		t.Errorf("Phone = %q, want +15551234567", identity.Phone)
+	}
+}
+
+func TestProvisionPhoneForIdentity_WithCountryCode(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req map[string]any
+		json.NewDecoder(r.Body).Decode(&req)
+		if req["country_code"] != "CA" {
+			t.Errorf("country_code = %v, want CA", req["country_code"])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Identity{UUID: "abc-123", Phone: "+14165551234"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.ProvisionPhoneForIdentity("abc-123", "CA")
+	if err != nil {
+		t.Fatalf("ProvisionPhoneForIdentity() error = %v", err)
+	}
+}
+
+func TestProvisionPhoneForIdentity_Conflict(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(Error{Detail: "This identity already has a phone number."})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.ProvisionPhoneForIdentity("abc-123", "")
+	if err == nil {
+		t.Fatal("ProvisionPhoneForIdentity() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "already has a phone number") {
+		t.Errorf("error = %q, want it to mention existing phone", err.Error())
 	}
 }
 
