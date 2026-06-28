@@ -10,7 +10,7 @@ Ravi CLI enables AI agents to receive and read communications on dedicated phone
 - **Sign up for services** using the assigned phone number and email address
 - **Read incoming messages** from services, notifications, and confirmations
 - **Automate workflows** that require email/SMS verification
-- **Store and retrieve website passwords** per identity
+- **Store and retrieve encrypted website passwords** per identity
 
 Each agent gets their own dedicated inbox with:
 
