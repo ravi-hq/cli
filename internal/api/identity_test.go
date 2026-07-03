@@ -66,7 +66,7 @@ func TestCreateIdentity_Success(t *testing.T) {
 	defer server.Close()
 
 	client := newTestClient(server.URL)
-	identity, err := client.CreateIdentity("Research", "", false)
+	identity, err := client.CreateIdentity("Research", "", "", false)
 	if err != nil {
 		t.Fatalf("CreateIdentity() error = %v", err)
 	}
@@ -82,8 +82,11 @@ func TestCreateIdentity_WithEmail(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]any
 		json.NewDecoder(r.Body).Decode(&req)
-		if req["email"] != "shopping@acme.com" {
-			t.Errorf("email = %q, want shopping@acme.com", req["email"])
+		if req["email_identifier"] != "shopping" {
+			t.Errorf("email_identifier = %q, want shopping", req["email_identifier"])
+		}
+		if req["domain"] != "acme.com" {
+			t.Errorf("domain = %q, want acme.com", req["domain"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(Identity{UUID: "id-3", Name: "Shopping", Email: "shopping@acme.com"})
@@ -91,7 +94,7 @@ func TestCreateIdentity_WithEmail(t *testing.T) {
 	defer server.Close()
 
 	client := newTestClient(server.URL)
-	identity, err := client.CreateIdentity("Shopping", "shopping@acme.com", false)
+	identity, err := client.CreateIdentity("Shopping", "shopping", "acme.com", false)
 	if err != nil {
 		t.Fatalf("CreateIdentity() error = %v", err)
 	}
@@ -107,8 +110,11 @@ func TestCreateIdentity_EmptyNameAndEmail(t *testing.T) {
 		if _, ok := req["name"]; ok {
 			t.Error("Expected name to be omitted when empty")
 		}
-		if _, ok := req["email"]; ok {
-			t.Error("Expected email to be omitted when empty")
+		if _, ok := req["email_identifier"]; ok {
+			t.Error("Expected email_identifier to be omitted when empty")
+		}
+		if _, ok := req["domain"]; ok {
+			t.Error("Expected domain to be omitted when empty")
 		}
 		if _, ok := req["provision_phone"]; ok {
 			t.Error("Expected provision_phone to be omitted when false")
@@ -119,7 +125,7 @@ func TestCreateIdentity_EmptyNameAndEmail(t *testing.T) {
 	defer server.Close()
 
 	client := newTestClient(server.URL)
-	_, err := client.CreateIdentity("", "", false)
+	_, err := client.CreateIdentity("", "", "", false)
 	if err != nil {
 		t.Fatalf("CreateIdentity() error = %v", err)
 	}
@@ -138,7 +144,7 @@ func TestCreateIdentity_WithProvisionPhone(t *testing.T) {
 	defer server.Close()
 
 	client := newTestClient(server.URL)
-	identity, err := client.CreateIdentity("WithPhone", "", true)
+	identity, err := client.CreateIdentity("WithPhone", "", "", true)
 	if err != nil {
 		t.Fatalf("CreateIdentity() error = %v", err)
 	}
@@ -155,7 +161,7 @@ func TestCreateIdentity_Error(t *testing.T) {
 	defer server.Close()
 
 	client := newTestClient(server.URL)
-	_, err := client.CreateIdentity("Bad", "", false)
+	_, err := client.CreateIdentity("Bad", "", "", false)
 	if err == nil {
 		t.Fatal("CreateIdentity() error = nil, want error")
 	}

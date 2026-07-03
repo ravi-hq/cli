@@ -60,12 +60,14 @@ jobs:
                    -X '${MODULE}/internal/version.APIBaseURL=${API_URL}'"
 
           mkdir -p dist
-          for platform in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+          for platform in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64; do
             GOOS="${platform%/*}"
             GOARCH="${platform#*/}"
+            EXT=""
+            if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
             echo "Building ravi-${GOOS}-${GOARCH}..."
             CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -ldflags "$LDFLAGS" \
-              -o "dist/ravi-${GOOS}-${GOARCH}/ravi" ./cmd/ravi
+              -o "dist/ravi-${GOOS}-${GOARCH}/ravi${EXT}" ./cmd/ravi
           done
 
       - name: Create archives and checksums
@@ -75,8 +77,14 @@ jobs:
         run: |
           for dir in ravi-*/; do
             name="${dir%/}"
-            archive="ravi-${VERSION}-${name#ravi-}.tar.gz"
-            tar -czf "$archive" -C "$name" ravi
+            platform="${name#ravi-}"
+            if echo "$platform" | grep -q "windows"; then
+              archive="ravi-${VERSION}-${platform}.zip"
+              (cd "$name" && zip "../$archive" ravi.exe)
+            else
+              archive="ravi-${VERSION}-${platform}.tar.gz"
+              tar -czf "$archive" -C "$name" ravi
+            fi
             sha256sum "$archive" >> checksums.txt
           done
           cat checksums.txt
@@ -94,6 +102,7 @@ jobs:
             --title "ravi v${VERSION}" \
             --generate-notes \
             dist/ravi-${VERSION}-*.tar.gz \
+            dist/ravi-${VERSION}-*.zip \
             dist/checksums.txt
 
       - name: Update Homebrew formula

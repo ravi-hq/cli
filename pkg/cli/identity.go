@@ -10,7 +10,8 @@ import (
 )
 
 var identityNameFlag string
-var identityEmailFlag string
+var identityEmailIdentifierFlag string
+var identityDomainFlag string
 var identityProvisionPhoneFlag bool
 
 var identityCmd = &cobra.Command{
@@ -46,7 +47,7 @@ var identityCreateCmd = &cobra.Command{
 			return err
 		}
 
-		identity, err := client.CreateIdentity(identityNameFlag, identityEmailFlag, identityProvisionPhoneFlag)
+		identity, err := client.CreateIdentity(identityNameFlag, identityEmailIdentifierFlag, identityDomainFlag, identityProvisionPhoneFlag)
 		if err != nil {
 			return err
 		}
@@ -119,7 +120,8 @@ Writes to .ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json.`
 
 func init() {
 	identityCreateCmd.Flags().StringVar(&identityNameFlag, "name", "", "Name for the new identity (omit for auto-generated human name)")
-	identityCreateCmd.Flags().StringVar(&identityEmailFlag, "email", "", "Email address: local part (e.g. 'myagent'), full email (e.g. 'myagent@custom.com'), or omit for auto-generated")
+	identityCreateCmd.Flags().StringVar(&identityEmailIdentifierFlag, "email-identifier", "", "Email local part (e.g. 'myagent'); omit for an auto-generated address")
+	identityCreateCmd.Flags().StringVar(&identityDomainFlag, "domain", "", "Email domain (optional; defaults to a platform domain). Requires --email-identifier")
 	identityCreateCmd.Flags().BoolVar(&identityProvisionPhoneFlag, "provision-phone", false, "Also provision a phone number for the new identity (requires a paid plan)")
 
 	identityCmd.AddCommand(identityListCmd)

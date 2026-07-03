@@ -378,8 +378,9 @@ func TestIdentityCreateCmd(t *testing.T) {
 	defer cleanup()
 
 	identityNameFlag = "NewIdentity"
-	identityEmailFlag = ""
-	defer func() { identityNameFlag = ""; identityEmailFlag = "" }()
+	identityEmailIdentifierFlag = ""
+	identityDomainFlag = ""
+	defer func() { identityNameFlag = ""; identityEmailIdentifierFlag = ""; identityDomainFlag = "" }()
 
 	err := identityCreateCmd.RunE(identityCreateCmd, nil)
 	if err != nil {

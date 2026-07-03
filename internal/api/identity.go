@@ -11,18 +11,22 @@ func (c *Client) ListIdentities() ([]Identity, error) {
 	return identities, nil
 }
 
-// CreateIdentity creates a new identity with the given name and optional email address.
-// Email accepts three formats: local part only (e.g. "shopping"), full email
-// (e.g. "shopping@acme.com"), or empty string for auto-generated.
+// CreateIdentity creates a new identity with the given name and optional email
+// address. The address is specified as emailIdentifier (the local part, e.g.
+// "shopping") plus an optional domain; both empty auto-generates the address.
+// A domain without an emailIdentifier is rejected by the server.
 // When provisionPhone is true, the server provisions a phone number and links it
 // to the identity (requires an active paid subscription).
-func (c *Client) CreateIdentity(name string, email string, provisionPhone bool) (*Identity, error) {
+func (c *Client) CreateIdentity(name, emailIdentifier, domain string, provisionPhone bool) (*Identity, error) {
 	req := map[string]any{}
 	if name != "" {
 		req["name"] = name
 	}
-	if email != "" {
-		req["email"] = email
+	if emailIdentifier != "" {
+		req["email_identifier"] = emailIdentifier
+	}
+	if domain != "" {
+		req["domain"] = domain
 	}
 	if provisionPhone {
 		req["provision_phone"] = true
