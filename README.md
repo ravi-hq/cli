@@ -125,10 +125,12 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 
 ### Resources
 
+An identity has an **email** channel and a **phone** channel.
+
 | Command | Description |
 |---------|-------------|
-| `ravi get email` | Get your assigned Ravi email address |
-| `ravi get phone` | Get your assigned Ravi phone number |
+| `ravi get email` | Get the identity's email address |
+| `ravi get phone` | Get the identity's phone number |
 
 ### Inbox (grouped by conversation/thread)
 
@@ -155,6 +157,21 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 | `ravi message sms <message-id>` | View specific SMS message by ID |
 | `ravi message sms --unread` | List only unread SMS messages |
 
+### Send SMS
+
+| Command | Description |
+|---------|-------------|
+| `ravi sms send --to <e164> --body <text>` | Send an SMS from the identity's phone number |
+
+### Calls
+
+| Command | Description |
+|---------|-------------|
+| `ravi call --to <e164>` | Place an outbound call from the identity's phone number |
+| `ravi call list` | List calls |
+| `ravi call transcript <call-id>` | Show a call's transcript |
+| `ravi call hangup <call-id>` | Hang up an active call |
+
 ### Passwords
 
 | Command | Description |
@@ -173,8 +190,14 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 | Flag | Description |
 |------|-------------|
 | `--human` | Output in human-readable format (default is JSON) |
+| `--identity <uuid>` | Target a specific identity for per-identity calls (contacts, passwords, secrets, calls, events, messages). When omitted, the active identity key scopes the request. |
 | `--help` | Show help for any command |
 | `--version` | Show version information |
+
+The API key is an **auth fence** — it defines what you're allowed to touch. The
+*caller* chooses the identity. A management key with `--identity <uuid>` targets
+one identity; an identity-scoped key is already fenced to its identity (and
+`--identity` must match it).
 
 ## JSON Output for AI Agents
 

@@ -8,7 +8,7 @@ import (
 // ListContacts fetches all contacts for the authenticated user.
 func (c *Client) ListContacts() ([]ContactEntry, error) {
 	var result []ContactEntry
-	if err := c.doAuthenticatedRequest(http.MethodGet, PathContacts, nil, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathContacts, nil), nil, &result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -16,7 +16,7 @@ func (c *Client) ListContacts() ([]ContactEntry, error) {
 
 // GetContact fetches a single contact by UUID.
 func (c *Client) GetContact(uuid string) (*ContactEntry, error) {
-	path := PathContacts + uuid + "/"
+	path := c.scopedPath(PathContacts+uuid+"/", nil)
 	var result ContactEntry
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (c *Client) GetContact(uuid string) (*ContactEntry, error) {
 // CreateContact creates a new contact.
 func (c *Client) CreateContact(entry ContactEntry) (*ContactEntry, error) {
 	var result ContactEntry
-	if err := c.doAuthenticatedRequest(http.MethodPost, PathContacts, entry, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodPost, c.scopedPath(PathContacts, nil), entry, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -35,7 +35,7 @@ func (c *Client) CreateContact(entry ContactEntry) (*ContactEntry, error) {
 
 // UpdateContact partially updates a contact by UUID.
 func (c *Client) UpdateContact(uuid string, fields map[string]interface{}) (*ContactEntry, error) {
-	path := PathContacts + uuid + "/"
+	path := c.scopedPath(PathContacts+uuid+"/", nil)
 	var result ContactEntry
 	if err := c.doAuthenticatedRequest(http.MethodPatch, path, fields, &result); err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (c *Client) UpdateContact(uuid string, fields map[string]interface{}) (*Con
 
 // DeleteContact deletes a contact by UUID.
 func (c *Client) DeleteContact(uuid string) error {
-	path := PathContacts + uuid + "/"
+	path := c.scopedPath(PathContacts+uuid+"/", nil)
 	return c.doAuthenticatedRequest(http.MethodDelete, path, nil, nil)
 }
 
@@ -59,7 +59,7 @@ func (c *Client) FindContact(email, phone string) (*ContactEntry, error) {
 		params.Set("phone_number", phone)
 	}
 
-	path := PathContacts + "find/?" + params.Encode()
+	path := c.scopedPath(PathContacts+"find/", params)
 	var result ContactEntry
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
@@ -69,7 +69,9 @@ func (c *Client) FindContact(email, phone string) (*ContactEntry, error) {
 
 // SearchContacts searches contacts by a query string.
 func (c *Client) SearchContacts(query string) ([]ContactEntry, error) {
-	path := PathContacts + "search/?q=" + url.QueryEscape(query)
+	params := url.Values{}
+	params.Set("q", query)
+	path := c.scopedPath(PathContacts+"search/", params)
 	var result []ContactEntry
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err

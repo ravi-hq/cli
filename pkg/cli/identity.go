@@ -24,7 +24,7 @@ var identityListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all identities",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewManagementClient()
+		client, err := newManagementClient()
 		if err != nil {
 			return err
 		}
@@ -42,7 +42,7 @@ var identityCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new identity",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewManagementClient()
+		client, err := newManagementClient()
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ Writes to .ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json.`
 		target := args[0]
 
 		// Resolve identity by UUID.
-		client, err := api.NewManagementClient()
+		client, err := newManagementClient()
 		if err != nil {
 			return err
 		}

@@ -12,10 +12,7 @@ func (c *Client) ListEmailThreads(unreadOnly bool) ([]EmailThread, error) {
 		params.Set("has_unread", "true")
 	}
 
-	path := PathEmailInbox
-	if len(params) > 0 {
-		path += "?" + params.Encode()
-	}
+	path := c.scopedPath(PathEmailInbox, params)
 
 	var result []EmailThread
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
@@ -29,7 +26,7 @@ func (c *Client) ListEmailThreads(unreadOnly bool) ([]EmailThread, error) {
 func (c *Client) GetEmailThread(threadID string) (*EmailThreadDetail, error) {
 	// URL encode the thread ID (it may contain special chars like < > @)
 	encodedID := url.PathEscape(threadID)
-	path := PathEmailInbox + encodedID + "/"
+	path := c.scopedPath(PathEmailInbox+encodedID+"/", nil)
 
 	var result EmailThreadDetail
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
@@ -46,10 +43,7 @@ func (c *Client) ListSMSConversations(unreadOnly bool) ([]SMSConversation, error
 		params.Set("has_unread", "true")
 	}
 
-	path := PathSMSInbox
-	if len(params) > 0 {
-		path += "?" + params.Encode()
-	}
+	path := c.scopedPath(PathSMSInbox, params)
 
 	var result []SMSConversation
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
@@ -63,7 +57,7 @@ func (c *Client) ListSMSConversations(unreadOnly bool) ([]SMSConversation, error
 func (c *Client) GetSMSConversation(conversationID string) (*SMSConversationDetail, error) {
 	// URL encode the conversation ID (it may contain + in phone numbers)
 	encodedID := url.PathEscape(conversationID)
-	path := PathSMSInbox + encodedID + "/"
+	path := c.scopedPath(PathSMSInbox+encodedID+"/", nil)
 
 	var result SMSConversationDetail
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {

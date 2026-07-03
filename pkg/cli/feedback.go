@@ -17,7 +17,7 @@ var feedbackCmd = &cobra.Command{
 		message := args[0]
 		subject, _ := cmd.Flags().GetString("subject")
 
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}

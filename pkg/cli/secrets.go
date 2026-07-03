@@ -17,7 +17,7 @@ var secretListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all stored secrets",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ var secretGetCmd = &cobra.Command{
 	Short: "Show a stored secret by key",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ var secretSetCmd = &cobra.Command{
 	Short: "Create or update a secret",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ var secretDeleteCmd = &cobra.Command{
 	Short: "Delete a stored secret by UUID",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}

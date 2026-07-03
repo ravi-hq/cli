@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -452,6 +453,64 @@ func TestBuildURL(t *testing.T) {
 				t.Errorf("BuildURL() = %v, want %v", result, tc.wantPath)
 			}
 		})
+	}
+}
+
+// TestScopedPath verifies identity filtering: when set it appends
+// ?identity=<uuid> (merged with existing params); when unset it is a no-op.
+func TestScopedPath(t *testing.T) {
+	testCases := []struct {
+		name     string
+		identity string
+		path     string
+		params   url.Values
+		want     string
+	}{
+		{
+			name: "no identity, no params",
+			path: "/api/contacts/",
+			want: "/api/contacts/",
+		},
+		{
+			name:     "identity set, no params",
+			identity: "id-1",
+			path:     "/api/contacts/",
+			want:     "/api/contacts/?identity=id-1",
+		},
+		{
+			name:   "no identity, with params",
+			path:   "/api/messages/",
+			params: url.Values{"is_read": {"false"}},
+			want:   "/api/messages/?is_read=false",
+		},
+		{
+			name:     "identity merged with params",
+			identity: "id-2",
+			path:     "/api/messages/",
+			params:   url.Values{"is_read": {"false"}},
+			want:     "/api/messages/?identity=id-2&is_read=false",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &Client{}
+			c.WithIdentity(tc.identity)
+			if got := c.scopedPath(tc.path, tc.params); got != tc.want {
+				t.Errorf("scopedPath() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestWithIdentity_Chains verifies WithIdentity returns the receiver.
+func TestWithIdentity_Chains(t *testing.T) {
+	c := &Client{}
+	if got := c.WithIdentity("abc"); got != c {
+		t.Error("WithIdentity() did not return receiver")
+	}
+	if c.identity != "abc" {
+		t.Errorf("identity = %q, want abc", c.identity)
 	}
 }
 

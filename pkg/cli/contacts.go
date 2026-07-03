@@ -26,7 +26,7 @@ var ctListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all contacts",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ var ctSearchCmd = &cobra.Command{
 	Short: "Search contacts",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ var ctGetCmd = &cobra.Command{
 	Short: "Show a contact",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -140,7 +140,7 @@ var ctCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new contact",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -172,7 +172,7 @@ var ctEditCmd = &cobra.Command{
 	Short: "Update a contact",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -217,7 +217,7 @@ var ctDeleteCmd = &cobra.Command{
 	Short: "Delete a contact",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}

@@ -30,7 +30,7 @@ var pwListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all stored passwords",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -69,7 +69,7 @@ var pwGetCmd = &cobra.Command{
 	Short: "Show a stored password",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ var pwCreateCmd = &cobra.Command{
 	Short: "Create a new password entry",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -149,7 +149,7 @@ var pwEditCmd = &cobra.Command{
 	Short: "Update a stored password entry",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -191,7 +191,7 @@ var pwDeleteCmd = &cobra.Command{
 	Short: "Delete a stored password entry",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -213,7 +213,7 @@ var pwGenerateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "Generate a random password",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}

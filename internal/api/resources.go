@@ -53,10 +53,7 @@ func (c *Client) ListSMSMessages(unreadOnly bool) ([]PhoneMessage, error) {
 		params.Set("is_read", "false")
 	}
 
-	path := PathMessages
-	if len(params) > 0 {
-		path += "?" + params.Encode()
-	}
+	path := c.scopedPath(PathMessages, params)
 
 	var result []PhoneMessage
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
@@ -68,13 +65,24 @@ func (c *Client) ListSMSMessages(unreadOnly bool) ([]PhoneMessage, error) {
 
 // GetSMSMessage fetches a specific SMS message by ID.
 func (c *Client) GetSMSMessage(messageID string) (*PhoneMessage, error) {
-	path := PathMessages + messageID + "/"
+	path := c.scopedPath(PathMessages+messageID+"/", nil)
 
 	var result PhoneMessage
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
 	}
 
+	return &result, nil
+}
+
+// SendSMS sends an SMS from the identity's provisioned phone number.
+// Management-scoped keys must scope the client to an identity (WithIdentity).
+func (c *Client) SendSMS(req SmsSendRequest) (*PhoneMessage, error) {
+	path := c.scopedPath(PathMessagesSend, nil)
+	var result PhoneMessage
+	if err := c.doAuthenticatedRequest(http.MethodPost, path, req, &result); err != nil {
+		return nil, err
+	}
 	return &result, nil
 }
 
@@ -85,10 +93,7 @@ func (c *Client) ListEmailMessages(unreadOnly bool) ([]EmailMessageDetail, error
 		params.Set("is_read", "false")
 	}
 
-	path := PathEmailMessages
-	if len(params) > 0 {
-		path += "?" + params.Encode()
-	}
+	path := c.scopedPath(PathEmailMessages, params)
 
 	var result []EmailMessageDetail
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
@@ -100,7 +105,7 @@ func (c *Client) ListEmailMessages(unreadOnly bool) ([]EmailMessageDetail, error
 
 // GetEmailMessage fetches a specific email message by ID.
 func (c *Client) GetEmailMessage(messageID string) (*EmailMessageDetail, error) {
-	path := PathEmailMessages + messageID + "/"
+	path := c.scopedPath(PathEmailMessages+messageID+"/", nil)
 
 	var result EmailMessageDetail
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {

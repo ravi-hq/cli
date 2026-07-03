@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 )
 
 // GetInboxID fetches the user's email and returns its ID.
@@ -62,7 +63,9 @@ func (c *Client) UploadToPresignedURL(uploadURL, filePath, contentType string) e
 
 // ComposeEmail sends a new email from the given inbox.
 func (c *Client) ComposeEmail(inboxID int, req ComposeRequest) (*EmailMessageDetail, error) {
-	path := fmt.Sprintf("%s?inbox=%d", PathEmailCompose, inboxID)
+	params := url.Values{}
+	params.Set("inbox", strconv.Itoa(inboxID))
+	path := c.scopedPath(PathEmailCompose, params)
 	var result EmailMessageDetail
 	if err := c.doAuthenticatedRequest(http.MethodPost, path, req, &result); err != nil {
 		return nil, err
@@ -72,7 +75,7 @@ func (c *Client) ComposeEmail(inboxID int, req ComposeRequest) (*EmailMessageDet
 
 // ReplyEmail sends a reply to a specific email message.
 func (c *Client) ReplyEmail(messageID string, req ReplyRequest) (*EmailMessageDetail, error) {
-	path := PathEmailMessages + url.PathEscape(messageID) + "/reply/"
+	path := c.scopedPath(PathEmailMessages+url.PathEscape(messageID)+"/reply/", nil)
 	var result EmailMessageDetail
 	if err := c.doAuthenticatedRequest(http.MethodPost, path, req, &result); err != nil {
 		return nil, err
@@ -82,7 +85,7 @@ func (c *Client) ReplyEmail(messageID string, req ReplyRequest) (*EmailMessageDe
 
 // ReplyAllEmail sends a reply-all to a specific email message.
 func (c *Client) ReplyAllEmail(messageID string, req ReplyRequest) (*EmailMessageDetail, error) {
-	path := PathEmailMessages + url.PathEscape(messageID) + "/reply-all/"
+	path := c.scopedPath(PathEmailMessages+url.PathEscape(messageID)+"/reply-all/", nil)
 	var result EmailMessageDetail
 	if err := c.doAuthenticatedRequest(http.MethodPost, path, req, &result); err != nil {
 		return nil, err
@@ -92,7 +95,7 @@ func (c *Client) ReplyAllEmail(messageID string, req ReplyRequest) (*EmailMessag
 
 // ForwardEmail forwards an email message to one or more recipients.
 func (c *Client) ForwardEmail(messageID string, req ForwardRequest) (*EmailMessageDetail, error) {
-	path := PathEmailMessages + url.PathEscape(messageID) + "/forward/"
+	path := c.scopedPath(PathEmailMessages+url.PathEscape(messageID)+"/forward/", nil)
 	var result EmailMessageDetail
 	if err := c.doAuthenticatedRequest(http.MethodPost, path, req, &result); err != nil {
 		return nil, err

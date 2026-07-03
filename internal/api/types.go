@@ -180,6 +180,45 @@ type PhoneMessage struct {
 	CreatedDt  time.Time `json:"created_dt"`
 }
 
+// SmsSendRequest is the request body for sending an SMS from the identity's phone.
+type SmsSendRequest struct {
+	ToNumber string `json:"to_number"`
+	Body     string `json:"body"`
+}
+
+// CallStartRequest is the request body for starting an outbound call.
+type CallStartRequest struct {
+	ToNumber string `json:"to_number"`
+}
+
+// Call represents a phone call placed from an identity's phone number.
+type Call struct {
+	ID         int       `json:"id"`
+	UUID       string    `json:"uuid"`
+	URL        string    `json:"url"`
+	Phone      string    `json:"phone"`
+	FromNumber string    `json:"from_number"`
+	ToNumber   string    `json:"to_number"`
+	Direction  string    `json:"direction"`
+	Status     string    `json:"status"`
+	AnsweredAt *string   `json:"answered_at"`
+	EndedAt    *string   `json:"ended_at"`
+	EndReason  string    `json:"end_reason"`
+	CreatedDt  time.Time `json:"created_dt"`
+}
+
+// CallTranscriptSegment represents a single segment of a call transcript.
+type CallTranscriptSegment struct {
+	ID             int     `json:"id"`
+	Speaker        string  `json:"speaker"`
+	Text           string  `json:"text"`
+	IsFinal        bool    `json:"is_final"`
+	Confidence     float64 `json:"confidence"`
+	SequenceNumber int     `json:"sequence_number"`
+	OccurredAt     *string `json:"occurred_at"`
+	CreatedDt      string  `json:"created_dt"`
+}
+
 // EmailMessageDetail represents an individual email message (standalone, from /api/email-messages/).
 type EmailMessageDetail struct {
 	ID          int          `json:"id"`

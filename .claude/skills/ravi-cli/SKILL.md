@@ -1,11 +1,13 @@
 ---
 name: ravi-cli
-description: Use when working with the Ravi CLI — identity, inbox, passwords, secrets, email, SMS, and feedback commands
+description: Use when working with the Ravi CLI — identity, inbox, passwords, secrets, email, SMS, calls, and feedback commands
 ---
 
 # Ravi CLI — Identity for AI Agents
 
-You have access to `ravi`, a CLI that gives you your own phone number, email address, and credential store. Use it to sign up for services, receive OTPs, complete 2FA, and store passwords — all autonomously.
+You have access to `ravi`, a CLI that gives you your own phone number, email address, and credential store. Use it to sign up for services, receive and act on verification codes, send SMS, place calls, and store passwords — all autonomously.
+
+An identity has an **email** channel (an address) and a **phone** channel (a number). The API key is an auth fence, not an identity selector: use `--identity <uuid>` to target a specific identity for per-identity calls (contacts, passwords, secrets, calls, messages). When omitted, the active identity key scopes the request.
 
 ## Prerequisites
 
@@ -19,14 +21,14 @@ If `"authenticated": false`, tell the user to run `ravi auth login` (requires br
 
 ## Your Identity
 
-Get the email and phone number assigned to you:
+Get the identity's email address and phone number:
 
 ```bash
-# Your email address (use this for signups)
+# The identity's email address (use this for signups)
 ravi get email
 # → {"id": 1, "email": "janedoe@example.com", "created_dt": "..."}
 
-# Your phone number (use this for SMS verification)
+# The identity's phone number (use this for SMS verification)
 ravi get phone
 # → {"id": 1, "phone_number": "+15551234567", "provider": "twilio", "created_dt": "..."}
 
@@ -37,7 +39,7 @@ ravi get owner
 
 ## Receiving Messages
 
-After triggering a verification (signup form, 2FA, etc.), wait a few seconds then check your inbox.
+After triggering a verification (signup form, login code, etc.), wait a few seconds then check your inbox.
 
 ### SMS (OTPs, verification codes)
 
@@ -54,6 +56,7 @@ ravi inbox sms <conversation_id>
 ```
 
 **JSON shape — conversation list:**
+
 ```json
 [{
   "conversation_id": "1_+15559876543",
@@ -67,6 +70,7 @@ ravi inbox sms <conversation_id>
 ```
 
 **JSON shape — conversation detail:**
+
 ```json
 {
   "conversation_id": "1_+15559876543",
@@ -91,6 +95,7 @@ ravi inbox email <thread_id>
 ```
 
 **JSON shape — thread detail:**
+
 ```json
 {
   "thread_id": "abc123",
@@ -133,6 +138,7 @@ ravi email compose --to "recipient@example.com" --subject "Subject" --body "<p>H
 ```
 
 **Flags:**
+
 - `--to` (required): Recipient email address
 - `--subject` (required): Email subject line
 - `--body` (required): Email body (HTML supported — use tags like `<p>`, `<h2>`, `<ul>` for formatting)
@@ -154,6 +160,7 @@ ravi email reply <message_id> --body "<p>Adding the team.</p>" --cc "team@exampl
 ```
 
 **Flags:**
+
 - `--body` (required): Email body (HTML supported — use tags like `<p>`, `<h2>`, `<ul>` for formatting)
 - `--cc`: CC recipients (comma-separated)
 - `--bcc`: BCC recipients (comma-separated)
@@ -166,11 +173,47 @@ ravi email forward <message_id> --to "recipient@example.com" --body "<p>FYI — 
 ```
 
 **Flags:**
+
 - `--to` (required): Recipient email address
 - `--body` (required): Email body (HTML supported — use tags like `<p>`, `<h2>`, `<ul>` for formatting)
 - `--cc`: CC recipients (comma-separated)
 - `--bcc`: BCC recipients (comma-separated)
 - `--attach`: File path to attach (can be repeated for multiple files)
+
+## Sending SMS
+
+Send an SMS from the identity's phone number:
+
+```bash
+ravi sms send --to "+14155559876" --body "Your code is 483920"
+# → {"id": 15, "from_number": "+15551234567", "to_number": "+14155559876", "body": "...", "direction": "outgoing", ...}
+```
+
+**Flags:**
+
+- `--to` (required): Recipient phone number in E.164 format (e.g. `+14155559876`)
+- `--body` (required): Message text
+
+Reading received SMS lives under `ravi inbox sms` / `ravi message sms`.
+
+## Calls
+
+Place and manage phone calls from the identity's phone number:
+
+```bash
+# Place an outbound call
+ravi call --to "+14155559876"
+# → {"id": 7, "from_number": "+15551234567", "to_number": "+14155559876", "status": "queued", ...}
+
+# List calls (newest first)
+ravi call list
+
+# Show a call's transcript
+ravi call transcript 7
+
+# Hang up an active call
+ravi call hangup 7
+```
 
 ## Email Writing Guide
 
@@ -179,6 +222,7 @@ Write emails that look like they came from a real person. Good formatting improv
 **Subject lines:** 40-60 chars, specific, no ALL CAPS, avoid spam triggers ("free", "act now", "limited time", "click here").
 
 **HTML body template:**
+
 ```bash
 NAME=$(ravi identity list | jq -r '.[0].name')
 
@@ -202,6 +246,7 @@ ravi email compose \
 ```
 
 **Rules:**
+
 - Always wrap text in `<p>` tags — never pass plain text to `--body`
 - Use `<ul>`/`<li>` for lists, `<a href="...">descriptive text</a>` for links
 - No `<html>`/`<body>` wrappers, no `<br>` chains
@@ -308,10 +353,10 @@ THREAD_ID=$(ravi inbox email --unread | jq -r '.[0].thread_id')
 ravi inbox email "$THREAD_ID" | jq -r '.messages[].text_content' | grep -oE 'https?://[^ ]+'
 ```
 
-### Complete 2FA login
+### Use a login code from SMS
 
 ```bash
-# After triggering 2FA on a website:
+# After a website texts you a login/verification code:
 sleep 5
 CODE=$(ravi inbox sms --unread | jq -r '.[0].preview' | grep -oE '[0-9]{4,8}' | head -1)
 # Use $CODE to complete the login

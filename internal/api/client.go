@@ -20,6 +20,10 @@ type Client struct {
 	baseURL    string
 	apiKey     string // management key or identity key
 	userEmail  string
+	// identity is an optional identity UUID appended as ?identity=<uuid> to
+	// per-identity calls (contacts, passwords, secrets, calls, events,
+	// messages). Empty means "let the key decide" — behaviour is unchanged.
+	identity string
 }
 
 // NewClient creates an identity-scoped API client using the identity key.
@@ -177,4 +181,29 @@ func (c *Client) BuildURL(path string, params url.Values) string {
 		return c.baseURL + path
 	}
 	return c.baseURL + path + "?" + params.Encode()
+}
+
+// WithIdentity returns the client scoped to the given identity UUID. The UUID
+// is appended as ?identity=<uuid> to per-identity calls. An empty uuid is a
+// no-op, leaving scoping to the active key. Returns the receiver for chaining.
+func (c *Client) WithIdentity(uuid string) *Client {
+	c.identity = uuid
+	return c
+}
+
+// scopedPath appends the caller's query params plus the ?identity=<uuid>
+// filter (when set) to a path. Used by per-identity resource calls so a
+// management key can target one identity ("the key is a fence, the caller
+// chooses the identity").
+func (c *Client) scopedPath(path string, params url.Values) string {
+	if params == nil {
+		params = url.Values{}
+	}
+	if c.identity != "" {
+		params.Set("identity", c.identity)
+	}
+	if len(params) == 0 {
+		return path
+	}
+	return path + "?" + params.Encode()
 }

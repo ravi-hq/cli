@@ -1,23 +1,24 @@
 package cli
 
 import (
-	"github.com/ravi-hq/cli/internal/api"
+	"fmt"
+
 	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
 var getCmd = &cobra.Command{
 	Use:   "get",
-	Short: "Get assigned resources",
-	Long:  "Get your assigned Ravi phone number or email address.",
+	Short: "Get the identity's channels",
+	Long:  "Get the identity's email address, phone number, or the account owner.",
 }
 
 var getPhoneCmd = &cobra.Command{
 	Use:   "phone",
-	Short: "Get your assigned phone number",
-	Long:  "Get the Ravi phone number assigned to your account.",
+	Short: "Get the identity's phone number",
+	Long:  "Get the phone number for the identity's phone channel.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -27,7 +28,11 @@ var getPhoneCmd = &cobra.Command{
 			return err
 		}
 
-		output.Current.Print(phone)
+		if !humanOutput {
+			return output.Current.Print(phone)
+		}
+
+		fmt.Printf("Phone number: %s\n", phone.PhoneNumber)
 		return nil
 	},
 }
@@ -37,7 +42,7 @@ var getOwnerCmd = &cobra.Command{
 	Short: "Get account owner's name",
 	Long:  "Get the name of the account owner (the human who owns this Ravi account).",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -54,10 +59,10 @@ var getOwnerCmd = &cobra.Command{
 
 var getEmailCmd = &cobra.Command{
 	Use:   "email",
-	Short: "Get your assigned email address",
-	Long:  "Get the Ravi email address assigned to your account.",
+	Short: "Get the identity's email address",
+	Long:  "Get the email address for the identity's email channel.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}
@@ -67,7 +72,11 @@ var getEmailCmd = &cobra.Command{
 			return err
 		}
 
-		output.Current.Print(email)
+		if !humanOutput {
+			return output.Current.Print(email)
+		}
+
+		fmt.Printf("Email address: %s\n", email.Email)
 		return nil
 	},
 }

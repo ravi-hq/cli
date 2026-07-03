@@ -2463,6 +2463,114 @@ func TestPersistentPreRun(t *testing.T) {
 	rootCmd.PersistentPreRun(rootCmd, nil)
 }
 
+// --- SMS send command ---
+
+func TestSmsSendCmd_Success(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != api.PathMessagesSend {
+			t.Errorf("path = %s, want %s", r.URL.Path, api.PathMessagesSend)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(api.PhoneMessage{ID: 1, FromNumber: "+15551234567", ToNumber: "+14155559876", Body: "hi"})
+	}))
+	_ = server
+	defer cleanup()
+
+	smsSendTo = "+14155559876"
+	smsSendBody = "hi"
+	defer func() { smsSendTo, smsSendBody = "", "" }()
+
+	if err := smsSendCmd.RunE(smsSendCmd, nil); err != nil {
+		t.Fatalf("smsSendCmd.RunE() error = %v", err)
+	}
+}
+
+// TestSmsSendCmd_IdentityFlag verifies the global --identity flag threads
+// through as ?identity=<uuid>.
+func TestSmsSendCmd_IdentityFlag(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("identity"); got != "flag-uuid" {
+			t.Errorf("identity param = %q, want flag-uuid", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(api.PhoneMessage{ID: 1})
+	}))
+	_ = server
+	defer cleanup()
+
+	identityFlag = "flag-uuid"
+	smsSendTo = "+1"
+	smsSendBody = "x"
+	defer func() { identityFlag, smsSendTo, smsSendBody = "", "", "" }()
+
+	if err := smsSendCmd.RunE(smsSendCmd, nil); err != nil {
+		t.Fatalf("smsSendCmd.RunE() error = %v", err)
+	}
+}
+
+// --- Call commands ---
+
+func TestCallCmd_Start(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != api.PathCalls+"start/" {
+			t.Errorf("path = %s, want %sstart/", r.URL.Path, api.PathCalls)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(api.Call{ID: 7, ToNumber: "+14155559876", Status: "queued"})
+	}))
+	_ = server
+	defer cleanup()
+
+	callTo = "+14155559876"
+	defer func() { callTo = "" }()
+
+	if err := callCmd.RunE(callCmd, nil); err != nil {
+		t.Fatalf("callCmd.RunE() error = %v", err)
+	}
+}
+
+func TestCallListCmd(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.Call{{ID: 1}, {ID: 2}})
+	}))
+	_ = server
+	defer cleanup()
+
+	if err := callListCmd.RunE(callListCmd, nil); err != nil {
+		t.Fatalf("callListCmd.RunE() error = %v", err)
+	}
+}
+
+func TestCallTranscriptCmd(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]api.CallTranscriptSegment{{ID: 1, Speaker: "agent", Text: "Hi"}})
+	}))
+	_ = server
+	defer cleanup()
+
+	if err := callTranscriptCmd.RunE(callTranscriptCmd, []string{"7"}); err != nil {
+		t.Fatalf("callTranscriptCmd.RunE() error = %v", err)
+	}
+}
+
+func TestCallHangupCmd(t *testing.T) {
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(api.Call{ID: 7, Status: "completed"})
+	}))
+	_ = server
+	defer cleanup()
+
+	if err := callHangupCmd.RunE(callHangupCmd, []string{"7"}); err != nil {
+		t.Fatalf("callHangupCmd.RunE() error = %v", err)
+	}
+}
+
 // Suppress unused import warnings - these are used by setupCLITest.
 var _ = fmt.Sprintf
 var _ = runtime.GOOS

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"github.com/ravi-hq/cli/internal/api"
 	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -16,7 +15,7 @@ var ssoTokenCmd = &cobra.Command{
 	Short: "Request a short-lived SSO token",
 	Long:  "Request a short-lived SSO token (rvt_ prefix, 5-minute TTL). Requires an identity-scoped API key and an active subscription.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewClient()
+		client, err := newClient()
 		if err != nil {
 			return err
 		}

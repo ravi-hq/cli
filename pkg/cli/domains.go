@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"github.com/ravi-hq/cli/internal/api"
 	"github.com/ravi-hq/cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -10,7 +9,7 @@ var domainsCmd = &cobra.Command{
 	Use:   "domains",
 	Short: "List available email domains",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client, err := api.NewManagementClient()
+		client, err := newManagementClient()
 		if err != nil {
 			return err
 		}

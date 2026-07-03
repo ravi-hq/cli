@@ -8,7 +8,7 @@ import (
 // ListSecrets fetches all secret entries for the authenticated user.
 func (c *Client) ListSecrets() ([]SecretEntry, error) {
 	var result []SecretEntry
-	if err := c.doAuthenticatedRequest(http.MethodGet, PathSecrets, nil, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathSecrets, nil), nil, &result); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -19,7 +19,7 @@ func (c *Client) ListSecrets() ([]SecretEntry, error) {
 func (c *Client) GetSecret(key string) (*SecretEntry, error) {
 	params := url.Values{}
 	params.Set("key", key)
-	path := PathSecrets + "?" + params.Encode()
+	path := c.scopedPath(PathSecrets, params)
 
 	var result []SecretEntry
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
@@ -33,7 +33,7 @@ func (c *Client) GetSecret(key string) (*SecretEntry, error) {
 
 // GetSecretByUUID fetches a single secret entry by UUID.
 func (c *Client) GetSecretByUUID(uuid string) (*SecretEntry, error) {
-	path := PathSecrets + uuid + "/"
+	path := c.scopedPath(PathSecrets+uuid+"/", nil)
 	var result SecretEntry
 	if err := c.doAuthenticatedRequest(http.MethodGet, path, nil, &result); err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func (c *Client) GetSecretByUUID(uuid string) (*SecretEntry, error) {
 // CreateSecret creates a new secret entry.
 func (c *Client) CreateSecret(entry SecretEntry) (*SecretEntry, error) {
 	var result SecretEntry
-	if err := c.doAuthenticatedRequest(http.MethodPost, PathSecrets, entry, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodPost, c.scopedPath(PathSecrets, nil), entry, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
@@ -52,7 +52,7 @@ func (c *Client) CreateSecret(entry SecretEntry) (*SecretEntry, error) {
 
 // UpdateSecret partially updates a secret entry by UUID.
 func (c *Client) UpdateSecret(uuid string, fields map[string]interface{}) (*SecretEntry, error) {
-	path := PathSecrets + uuid + "/"
+	path := c.scopedPath(PathSecrets+uuid+"/", nil)
 	var result SecretEntry
 	if err := c.doAuthenticatedRequest(http.MethodPatch, path, fields, &result); err != nil {
 		return nil, err
@@ -62,6 +62,6 @@ func (c *Client) UpdateSecret(uuid string, fields map[string]interface{}) (*Secr
 
 // DeleteSecret deletes a secret entry by UUID.
 func (c *Client) DeleteSecret(uuid string) error {
-	path := PathSecrets + uuid + "/"
+	path := c.scopedPath(PathSecrets+uuid+"/", nil)
 	return c.doAuthenticatedRequest(http.MethodDelete, path, nil, nil)
 }

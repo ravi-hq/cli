@@ -9,6 +9,8 @@ const (
 	PathPhone         = "/api/phone/"
 	PathEmail         = "/api/email/"
 	PathMessages      = "/api/messages/"
+	PathMessagesSend  = "/api/messages/send/"
+	PathCalls         = "/api/calls/"
 	PathEmailMessages = "/api/email-messages/"
 	PathOwner         = "/api/master/"
 	PathPasswords     = "/api/passwords/"
