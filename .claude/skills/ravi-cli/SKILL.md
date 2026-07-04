@@ -196,7 +196,11 @@ ravi sms send --to "+14155559876" --body "Your code is 483920"
 
 Reading received SMS lives under `ravi inbox sms` / `ravi message sms`.
 
-## Calls
+## Calls (experimental)
+
+> Voice calling is **experimental and deprioritized** — email and SMS are the
+> supported, actively-maintained channels. The commands below work but may change
+> or be removed; don't build critical flows on them.
 
 Place and manage phone calls from the identity's phone number:
 

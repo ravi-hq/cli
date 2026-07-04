@@ -45,12 +45,14 @@ API keys from the production server will not work with the local server. **You m
 ```
 
 After login, verify:
+
 ```bash
 ./bin/ravi auth status
 # Expected: {"authenticated": true, "email": "...", "identity": "...", "identity_uuid": "..."}
 ```
 
 Verify config:
+
 ```bash
 cat ~/.ravi/config.json | python3 -m json.tool
 # Must have: management_key, identity_key, identity_uuid, identity_name
@@ -238,7 +240,7 @@ Delete any test identities/entries created during testing:
 
 | Limitation | Reason |
 |-----------|--------|
-| Cannot send emails | No Resend credentials locally |
+| Cannot send emails | No SendGrid credentials locally |
 | Cannot provision phones | No Twilio credentials locally |
 | SSE streams may not work | Requires `REDIS_URL` set on the dev server |
 | Cannot test SMS sending | No phone number provisioned locally |
