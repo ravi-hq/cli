@@ -1,6 +1,9 @@
 package api
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+)
 
 // ListIdentities returns all identities for the authenticated user.
 func (c *Client) ListIdentities() ([]Identity, error) {
@@ -33,6 +36,24 @@ func (c *Client) CreateIdentity(name, emailIdentifier, domain string, provisionP
 	}
 	var identity Identity
 	if err := c.doAuthenticatedRequest(http.MethodPost, PathIdentities, req, &identity); err != nil {
+		return nil, err
+	}
+	return &identity, nil
+}
+
+// ProvisionPhone provisions a new phone number and links it to the given
+// identity, returning the updated identity (with its Phone populated). Requires
+// an active paid subscription (the server returns 402 otherwise) and returns a
+// conflict if the identity already has a phone. countryCode defaults to "US"
+// when empty.
+func (c *Client) ProvisionPhone(identityUUID, countryCode string) (*Identity, error) {
+	if countryCode == "" {
+		countryCode = "US"
+	}
+	path := fmt.Sprintf("%s%s/provision-phone/", PathIdentities, identityUUID)
+	req := map[string]any{"country_code": countryCode}
+	var identity Identity
+	if err := c.doAuthenticatedRequest(http.MethodPost, path, req, &identity); err != nil {
 		return nil, err
 	}
 	return &identity, nil
