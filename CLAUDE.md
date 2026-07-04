@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Ravi CLI is a Go command-line client for the Ravi backend. It gives AI agents programmatic
-access to their provisioned email, phone, credentials, and 2FA.
+access to their provisioned email, phone, and credentials.
 
 ## Using Ravi CLI as an AI Agent
 
@@ -87,7 +87,7 @@ internal/
 ├── config/            # API key config (config.json)
 ├── output/            # Human/JSON formatters (switched by --human flag)
 └── version/           # Build-time version info (ldflags)
-pkg/cli/               # Cobra commands (identity, inbox, passwords, secrets, auth, get, message, email send)
+pkg/cli/               # Cobra commands (identity, inbox, passwords, secrets, auth, get, message, email compose)
     └── identity.go    # identity list/create/use commands
 ```
 
