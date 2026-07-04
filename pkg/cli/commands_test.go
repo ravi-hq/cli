@@ -75,7 +75,6 @@ func TestGetPhoneCmd(t *testing.T) {
 		json.NewEncoder(w).Encode([]api.Phone{{
 			ID:          1,
 			PhoneNumber: "+15551234567",
-			Provider:    "twilio",
 		}})
 	}))
 	_ = server

@@ -16,7 +16,7 @@ func TestGetPhone_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]Phone{
-			{ID: 1, PhoneNumber: "+15551234567", Provider: "twilio"},
+			{ID: 1, PhoneNumber: "+15551234567"},
 		})
 	}))
 	defer server.Close()

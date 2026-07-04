@@ -155,7 +155,6 @@ type Error struct {
 type Phone struct {
 	ID          int       `json:"id"`
 	PhoneNumber string    `json:"phone_number"`
-	Provider    string    `json:"provider"`
 	CreatedDt   time.Time `json:"created_dt"`
 }
 
