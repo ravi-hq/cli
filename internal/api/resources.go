@@ -10,7 +10,7 @@ import (
 // Returns the first phone number associated with the authenticated user.
 func (c *Client) GetPhone() (*Phone, error) {
 	var result []Phone
-	if err := c.doAuthenticatedRequest(http.MethodGet, PathPhone, nil, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathPhone, nil), nil, &result); err != nil {
 		return nil, err
 	}
 
@@ -25,7 +25,7 @@ func (c *Client) GetPhone() (*Phone, error) {
 // Returns the first email address associated with the authenticated user.
 func (c *Client) GetEmail() (*Email, error) {
 	var result []Email
-	if err := c.doAuthenticatedRequest(http.MethodGet, PathEmail, nil, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathEmail, nil), nil, &result); err != nil {
 		return nil, err
 	}
 

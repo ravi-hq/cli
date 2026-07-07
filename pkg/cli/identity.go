@@ -122,7 +122,7 @@ func init() {
 	identityCreateCmd.Flags().StringVar(&identityNameFlag, "name", "", "Name for the new identity (omit for auto-generated human name)")
 	identityCreateCmd.Flags().StringVar(&identityEmailIdentifierFlag, "email-identifier", "", "Email local part (e.g. 'myagent'); omit for an auto-generated address")
 	identityCreateCmd.Flags().StringVar(&identityDomainFlag, "domain", "", "Email domain (optional; defaults to a platform domain). Requires --email-identifier")
-	identityCreateCmd.Flags().BoolVar(&identityProvisionPhoneFlag, "provision-phone", false, "Also provision a phone number for the new identity (requires a paid plan)")
+	identityCreateCmd.Flags().BoolVar(&identityProvisionPhoneFlag, "provision-phone", false, "Also provision a phone number for the new identity (included free on your first identity; additional phones require a paid plan)")
 
 	identityCmd.AddCommand(identityListCmd)
 	identityCmd.AddCommand(identityCreateCmd)

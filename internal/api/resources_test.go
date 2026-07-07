@@ -31,6 +31,25 @@ func TestGetPhone_Success(t *testing.T) {
 	}
 }
 
+func TestGetPhone_ScopedByIdentity(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("identity"); got != "id-uuid-1" {
+			t.Errorf("identity param = %q, want id-uuid-1", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]Phone{
+			{ID: 1, PhoneNumber: "+15551234567"},
+		})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity("id-uuid-1")
+	_, err := client.GetPhone()
+	if err != nil {
+		t.Fatalf("GetPhone() error = %v", err)
+	}
+}
+
 func TestGetPhone_Empty(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -64,6 +83,25 @@ func TestGetEmail_Success(t *testing.T) {
 	}
 	if email.Email != "user@ravi.id" {
 		t.Errorf("Email = %q, want user@ravi.id", email.Email)
+	}
+}
+
+func TestGetEmail_ScopedByIdentity(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("identity"); got != "id-uuid-2" {
+			t.Errorf("identity param = %q, want id-uuid-2", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]Email{
+			{ID: 42, Email: "user@ravi.id"},
+		})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity("id-uuid-2")
+	_, err := client.GetEmail()
+	if err != nil {
+		t.Fatalf("GetEmail() error = %v", err)
 	}
 }
 

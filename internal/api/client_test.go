@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/ravi-hq/cli/internal/config"
-	"github.com/ravi-hq/cli/internal/version"
 )
 
 // withTempHome is a test helper that temporarily changes the HOME environment variable.
@@ -41,16 +40,11 @@ func withTempHome(t *testing.T) (tmpDir string, cleanup func()) {
 	return tmpDir, cleanup
 }
 
-// withAPIBaseURL is a test helper that temporarily sets the version.APIBaseURL.
+// withAPIBaseURL points the hosted API client at a local httptest server.
 func withAPIBaseURL(t *testing.T, url string) func() {
 	t.Helper()
-
-	original := version.APIBaseURL
-	version.APIBaseURL = url
-
-	return func() {
-		version.APIBaseURL = original
-	}
+	t.Setenv("RAVI_CLI_TEST_API_BASE_URL", url)
+	return func() {}
 }
 
 // setupTestConfig saves config to disk in the temp home directory.
@@ -153,7 +147,7 @@ func TestNewClient_FallsBackToManagementKey(t *testing.T) {
 }
 
 // TestNewClient_NoAPIURL verifies that NewClient falls back to the default URL
-// when API URL is not explicitly configured.
+// when API URL uses the hosted default.
 func TestNewClient_NoAPIURL(t *testing.T) {
 	cleanupURL := withAPIBaseURL(t, "")
 	defer cleanupURL()
@@ -170,8 +164,8 @@ func TestNewClient_NoAPIURL(t *testing.T) {
 		t.Fatal("NewClient() client = nil, want non-nil")
 	}
 
-	if !strings.Contains(client.baseURL, "ravi.id") {
-		t.Errorf("client.baseURL = %v, want to contain 'ravi.id'", client.baseURL)
+	if !strings.Contains(client.baseURL, "ravi.app") {
+		t.Errorf("client.baseURL = %v, want to contain 'ravi.app'", client.baseURL)
 	}
 }
 
@@ -707,7 +701,7 @@ func TestNewManagementClient_Success(t *testing.T) {
 }
 
 // TestNewManagementClient_NoAPIURL verifies that ManagementClient falls back to
-// the default URL when API URL is not explicitly configured.
+// the default URL when API URL uses the hosted default.
 func TestNewManagementClient_NoAPIURL(t *testing.T) {
 	cleanupURL := withAPIBaseURL(t, "")
 	defer cleanupURL()
@@ -724,8 +718,8 @@ func TestNewManagementClient_NoAPIURL(t *testing.T) {
 		t.Fatal("NewManagementClient() client = nil, want non-nil")
 	}
 
-	if !strings.Contains(client.baseURL, "ravi.id") {
-		t.Errorf("client.baseURL = %v, want to contain 'ravi.id'", client.baseURL)
+	if !strings.Contains(client.baseURL, "ravi.app") {
+		t.Errorf("client.baseURL = %v, want to contain 'ravi.app'", client.baseURL)
 	}
 }
 
@@ -753,7 +747,7 @@ func TestNewUnauthenticatedClient_Success(t *testing.T) {
 }
 
 // TestNewUnauthenticatedClient_NoAPIURL verifies that unauthenticated client falls back to
-// the default URL when API URL is not explicitly configured.
+// the default URL when API URL uses the hosted default.
 func TestNewUnauthenticatedClient_NoAPIURL(t *testing.T) {
 	cleanupURL := withAPIBaseURL(t, "")
 	defer cleanupURL()
@@ -767,8 +761,8 @@ func TestNewUnauthenticatedClient_NoAPIURL(t *testing.T) {
 		t.Fatal("NewUnauthenticatedClient() client = nil, want non-nil")
 	}
 
-	if !strings.Contains(client.baseURL, "ravi.id") {
-		t.Errorf("client.baseURL = %v, want to contain 'ravi.id'", client.baseURL)
+	if !strings.Contains(client.baseURL, "ravi.app") {
+		t.Errorf("client.baseURL = %v, want to contain 'ravi.app'", client.baseURL)
 	}
 }
 

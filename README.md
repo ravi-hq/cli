@@ -36,20 +36,21 @@ When filling out registration forms:
 1. Use `ravi get email` to get your assigned email address
 2. Use `ravi get phone` to get your assigned phone number
 3. Fill out the registration form with these credentials
-4. Monitor `ravi inbox list --unread` for the verification code
+4. Monitor `ravi message sms --unread` or `ravi message email --unread` for the verification code
 5. Complete the signup process
 
 ### Automated Verification Flows
 
 ```bash
 # Poll for new messages (JSON by default — ideal for automation)
-ravi inbox --unread
+ravi message sms --unread
 
-# Filter for SMS only
-ravi inbox --type sms --unread
+# Poll email only
+ravi message email --unread
 
-# Filter for email only
-ravi inbox --type email --unread
+# View grouped conversations/threads
+ravi inbox sms --unread
+ravi inbox email --unread
 ```
 
 ## Installation
@@ -63,7 +64,7 @@ Download the latest release for your platform from the [releases page](https://g
 ```bash
 git clone https://github.com/ravi-hq/cli.git
 cd cli
-make build API_URL=https://ravi.id
+make build
 ```
 
 ### Claude Code Plugin
@@ -89,21 +90,21 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 
 2. **Check your inbox:**
 
-   ```bash
-   ravi inbox list
-   ```
+	   ```bash
+	   ravi inbox email
+	   ```
 
 3. **View only unread messages:**
 
-   ```bash
-   ravi inbox list --unread
-   ```
+	   ```bash
+	   ravi inbox email --unread
+	   ```
 
 4. **View in human-readable format:**
 
-   ```bash
-   ravi inbox list --human
-   ```
+	   ```bash
+	   ravi inbox email --human
+	   ```
 
 ## Commands
 
@@ -136,15 +137,12 @@ An identity has an **email** channel and a **phone** channel.
 
 | Command | Description |
 |---------|-------------|
-| `ravi inbox list` | List all inbox messages (combined SMS + email) |
-| `ravi inbox list --type email` | Filter by message type (email/sms) |
-| `ravi inbox list --type sms` | Filter to SMS messages only |
-| `ravi inbox list --direction incoming` | Filter by direction (incoming/outgoing) |
-| `ravi inbox list --unread` | Show only unread messages |
 | `ravi inbox email` | List email threads |
 | `ravi inbox email <thread-id>` | View specific email thread with all messages |
+| `ravi inbox email --unread` | List email threads with unread messages |
 | `ravi inbox sms` | List SMS conversations |
 | `ravi inbox sms <conversation-id>` | View specific SMS conversation with all messages |
+| `ravi inbox sms --unread` | List SMS conversations with unread messages |
 
 ### Messages (flat list of individual messages)
 
@@ -205,7 +203,7 @@ All commands output JSON by default — ideal for programmatic parsing. Use `--h
 
 ```bash
 # List all unread messages as JSON
-ravi inbox list --unread
+ravi message sms --unread
 
 # Parse with jq to extract OTP from SMS
 ravi inbox sms | jq -r '.[0].messages[] | select(.body | test("[0-9]{6}")) | .body'
@@ -267,11 +265,11 @@ A `.ravi/config.json` in the current working directory overrides the global conf
 ### Building
 
 ```bash
-# Build with API URL (required)
-make build API_URL=https://ravi.id
+# Build
+make build
 
 # Build for all platforms
-make build-all API_URL=https://ravi.id
+make build-all
 
 # Run tests
 make test

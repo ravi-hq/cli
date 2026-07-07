@@ -299,6 +299,9 @@ type Identity struct {
 	Phone     string `json:"phone"`
 	CreatedDt string `json:"created_dt"`
 	UpdatedDt string `json:"updated_dt"`
+	// APIKey is the one-time identity API key returned only on creation
+	// (POST /api/identities/). It is empty when listing or retrieving.
+	APIKey string `json:"api_key,omitempty"`
 }
 
 // Attachment represents an email attachment metadata.
