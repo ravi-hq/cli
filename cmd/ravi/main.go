@@ -1,8 +1,6 @@
 // Package main is the entry point for the Ravi CLI application.
 //
-// The application is built with the API base URL injected at build time:
-//
-//	make build API_URL=https://ravi.id
+// The application uses Ravi's hosted API.
 //
 // Run with --help to see available commands.
 package main

@@ -57,10 +57,10 @@ See `.claude/skills/ravi-cli.md` for detailed usage instructions.
 ## Commands
 
 ```bash
-# Build (API_URL is REQUIRED at build time)
-make build API_URL=https://ravi.id      # Build binary
-make build-all API_URL=https://ravi.id  # Cross-compile all platforms
-make install API_URL=https://ravi.id    # Install to $GOPATH/bin
+# Build
+make build      # Build binary
+make build-all  # Cross-compile all platforms
+make install    # Install to $GOPATH/bin
 
 # Development
 make test              # Run tests
@@ -107,7 +107,7 @@ Resolution order:
 
 - **Output formatting**: Default is JSON. `--human` flag switches to human-readable. Global `output.Current` switches at runtime via `PersistentPreRun`
 - **Auth**: API key sent as header on every request. `management_key` for account-level ops, `identity_key` for identity-scoped ops
-- **Build-time config**: API URL injected via ldflags — no runtime config needed
+- **Hosted API**: API host is built in; there is no runtime or build-time API URL setting
 
 ## Code Style
 
@@ -120,7 +120,6 @@ Resolution order:
 
 | Gotcha | Details |
 |--------|---------|
-| API_URL required at build time | `make build` without `API_URL=` errors. Binary without it crashes |
 | SMS conversation IDs contain `+` | Phone numbers in IDs need `url.PathEscape()` for API calls |
 | JSON field name mismatches | `Identity.Email` maps to JSON `"inbox"`, `Identity.Phone` maps to JSON `"phone"` |
 
@@ -128,7 +127,6 @@ Resolution order:
 
 | Anti-Pattern | Why It's Bad | Do This Instead |
 |--------------|--------------|-----------------|
-| Hardcoding API URL | Binary won't work in other environments | Always inject via `make build API_URL=...` |
 | Parsing human output | Format changes break automation | Use default JSON output (omit `--human`) |
 | Skipping `url.PathEscape` | Breaks API calls with `+` in phone numbers | Always escape conversation/thread IDs |
 
@@ -136,7 +134,6 @@ Resolution order:
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| "API URL not configured" | Built without `API_URL` | Rebuild: `make build API_URL=https://ravi.id` |
 | 401 on every command | Invalid or missing API key | Re-authenticate: `ravi auth login` |
 | `golangci-lint` not found | Not installed | `brew install golangci-lint` or see golangci-lint docs |
 | Test fails with config error | Tests polluting `~/.ravi/` | Use `withTempHome(t)` helper to isolate |

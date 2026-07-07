@@ -39,41 +39,49 @@ func TestGetVersion_NotSet(t *testing.T) {
 	}
 }
 
-// TestGetAPIBaseURL_Set verifies that GetAPIBaseURL returns the configured URL
-// when APIBaseURL is set via build-time ldflags.
-func TestGetAPIBaseURL_Set(t *testing.T) {
-	// Save original value and restore after test
-	original := APIBaseURL
-	defer func() { APIBaseURL = original }()
-
-	APIBaseURL = "https://api.example.com"
+// TestGetAPIBaseURL_Hosted verifies that GetAPIBaseURL returns the hosted Ravi
+// API host by default (no overrides set).
+func TestGetAPIBaseURL_Hosted(t *testing.T) {
+	t.Setenv(apiBaseURLEnv, "")
+	t.Setenv(testAPIBaseURLEnv, "")
 
 	got, err := GetAPIBaseURL()
 	if err != nil {
 		t.Fatalf("GetAPIBaseURL() unexpected error = %v", err)
 	}
 
-	want := "https://api.example.com"
+	want := "https://api.ravi.app"
 	if got != want {
 		t.Errorf("GetAPIBaseURL() = %v, want %v", got, want)
 	}
 }
 
-// TestGetAPIBaseURL_NotSet verifies that GetAPIBaseURL falls back to
-// the default URL when APIBaseURL is not configured (empty string).
-func TestGetAPIBaseURL_NotSet(t *testing.T) {
-	// Save original value and restore after test
-	original := APIBaseURL
-	defer func() { APIBaseURL = original }()
-
-	APIBaseURL = ""
+func TestGetAPIBaseURL_TestOverride(t *testing.T) {
+	t.Setenv(apiBaseURLEnv, "")
+	t.Setenv(testAPIBaseURLEnv, "http://127.0.0.1:1234")
 
 	got, err := GetAPIBaseURL()
 	if err != nil {
 		t.Fatalf("GetAPIBaseURL() unexpected error = %v", err)
 	}
 
-	want := "https://ravi.id"
+	want := "http://127.0.0.1:1234"
+	if got != want {
+		t.Errorf("GetAPIBaseURL() = %v, want %v", got, want)
+	}
+}
+
+// TestGetAPIBaseURL_EnvOverride verifies that RAVI_API_URL takes precedence over
+// the hosted default in any build.
+func TestGetAPIBaseURL_EnvOverride(t *testing.T) {
+	t.Setenv(apiBaseURLEnv, "https://staging.example.com")
+
+	got, err := GetAPIBaseURL()
+	if err != nil {
+		t.Fatalf("GetAPIBaseURL() unexpected error = %v", err)
+	}
+
+	want := "https://staging.example.com"
 	if got != want {
 		t.Errorf("GetAPIBaseURL() = %v, want %v", got, want)
 	}

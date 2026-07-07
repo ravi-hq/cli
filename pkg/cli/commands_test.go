@@ -15,7 +15,6 @@ import (
 	"github.com/ravi-hq/cli/internal/auth"
 	"github.com/ravi-hq/cli/internal/config"
 	"github.com/ravi-hq/cli/internal/output"
-	"github.com/ravi-hq/cli/internal/version"
 )
 
 // Force usage of imports.
@@ -27,12 +26,11 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// withAPIBaseURL temporarily overrides version.APIBaseURL.
+// withAPIBaseURL points the hosted API client at a local httptest server.
 func withAPIBaseURL(t *testing.T, url string) func() {
 	t.Helper()
-	original := version.APIBaseURL
-	version.APIBaseURL = url
-	return func() { version.APIBaseURL = original }
+	t.Setenv("RAVI_CLI_TEST_API_BASE_URL", url)
+	return func() {}
 }
 
 // setupCLITest sets up a temp home with a config, a mock server, and returns cleanup.
@@ -1470,90 +1468,6 @@ func TestPasswordsEditCmd_NoFields(t *testing.T) {
 	err := pwEditCmd.RunE(pwEditCmd, []string{"some-uuid"})
 	if err == nil {
 		t.Fatal("pwEditCmd.RunE() error = nil, want error for no fields")
-	}
-}
-
-// --- API client error tests (covering all NewClient() error branches) ---
-// When version.APIBaseURL is empty, api.NewClient() and api.NewManagementClient() fail.
-// This covers the `if err != nil { return err }` branches in every command.
-
-func TestCommands_ClientError(t *testing.T) {
-	_, cleanupHome := withTempHome(t)
-	defer cleanupHome()
-
-	// Set APIBaseURL to empty to trigger NewClient() error.
-	cleanupURL := withAPIBaseURL(t, "")
-	defer cleanupURL()
-
-	commands := []struct {
-		name string
-		fn   func() error
-	}{
-		{"ctListCmd", func() error { return ctListCmd.RunE(ctListCmd, nil) }},
-		{"ctSearchCmd", func() error { return ctSearchCmd.RunE(ctSearchCmd, []string{"q"}) }},
-		{"ctGetCmd", func() error { return ctGetCmd.RunE(ctGetCmd, []string{"uuid"}) }},
-		{"ctCreateCmd", func() error { return ctCreateCmd.RunE(ctCreateCmd, nil) }},
-		{"ctEditCmd", func() error { return ctEditCmd.RunE(ctEditCmd, []string{"uuid"}) }},
-		{"ctDeleteCmd", func() error { return ctDeleteCmd.RunE(ctDeleteCmd, []string{"uuid"}) }},
-		{"getPhoneCmd", func() error { return getPhoneCmd.RunE(getPhoneCmd, nil) }},
-		{"getEmailCmd", func() error { return getEmailCmd.RunE(getEmailCmd, nil) }},
-		{"getOwnerCmd", func() error { return getOwnerCmd.RunE(getOwnerCmd, nil) }},
-		{"messageSMSCmd", func() error { return messageSMSCmd.RunE(messageSMSCmd, nil) }},
-		{"messageEmailCmd", func() error { return messageEmailCmd.RunE(messageEmailCmd, nil) }},
-		{"pwListCmd", func() error { return pwListCmd.RunE(pwListCmd, nil) }},
-		{"pwGetCmd", func() error { return pwGetCmd.RunE(pwGetCmd, []string{"uuid"}) }},
-		{"pwCreateCmd", func() error { return pwCreateCmd.RunE(pwCreateCmd, []string{"domain"}) }},
-		{"pwDeleteCmd", func() error { return pwDeleteCmd.RunE(pwDeleteCmd, []string{"uuid"}) }},
-		{"pwGenerateCmd", func() error { return pwGenerateCmd.RunE(pwGenerateCmd, nil) }},
-		{"secretListCmd", func() error { return secretListCmd.RunE(secretListCmd, nil) }},
-		{"secretGetCmd", func() error { return secretGetCmd.RunE(secretGetCmd, []string{"key"}) }},
-		{"secretSetCmd", func() error { return secretSetCmd.RunE(secretSetCmd, []string{"k", "v"}) }},
-		{"secretDeleteCmd", func() error { return secretDeleteCmd.RunE(secretDeleteCmd, []string{"uuid"}) }},
-		{"emailCmd_list", func() error { return emailCmd.RunE(emailCmd, nil) }},
-		{"smsCmd_list", func() error { return smsCmd.RunE(smsCmd, nil) }},
-		{"domainsCmd", func() error { return domainsCmd.RunE(domainsCmd, nil) }},
-		{"identityListCmd", func() error { return identityListCmd.RunE(identityListCmd, nil) }},
-		{"identityCreateCmd", func() error { return identityCreateCmd.RunE(identityCreateCmd, nil) }},
-		{"identityUseCmd", func() error { return identityUseCmd.RunE(identityUseCmd, []string{"uuid"}) }},
-		{"feedbackCmd", func() error { return feedbackCmd.RunE(feedbackCmd, []string{"msg"}) }},
-	}
-
-	for _, tc := range commands {
-		t.Run(tc.name, func(t *testing.T) {
-			err := tc.fn()
-			if err == nil {
-				t.Errorf("%s: expected error when API URL not configured, got nil", tc.name)
-			}
-		})
-	}
-}
-
-// --- Compose/Reply/ReplyAll/Forward client error ---
-
-func TestEmailSendCommands_ClientError(t *testing.T) {
-	_, cleanupHome := withTempHome(t)
-	defer cleanupHome()
-
-	cleanupURL := withAPIBaseURL(t, "")
-	defer cleanupURL()
-
-	commands := []struct {
-		name string
-		fn   func() error
-	}{
-		{"composeCmd", func() error { return composeCmd.RunE(composeCmd, nil) }},
-		{"replyCmd", func() error { return replyCmd.RunE(replyCmd, []string{"123"}) }},
-		{"replyAllCmd", func() error { return replyAllCmd.RunE(replyAllCmd, []string{"123"}) }},
-		{"forwardCmd", func() error { return forwardCmd.RunE(forwardCmd, []string{"123"}) }},
-	}
-
-	for _, tc := range commands {
-		t.Run(tc.name, func(t *testing.T) {
-			err := tc.fn()
-			if err == nil {
-				t.Errorf("%s: expected error when API URL not configured, got nil", tc.name)
-			}
-		})
 	}
 }
 

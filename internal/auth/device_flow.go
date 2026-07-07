@@ -134,15 +134,11 @@ func (d *DeviceFlow) handleSignup(tokenResp *api.DeviceTokenResponse) error {
 func (d *DeviceFlow) handleLogin(tokenResp *api.DeviceTokenResponse) error {
 	identities := tokenResp.Identities
 	if len(identities) == 0 {
-		// Save management key only, no identity to select.
-		if err := config.SaveGlobalConfig(&config.Config{
-			ManagementKey: tokenResp.ManagementKey,
-			UserEmail:     tokenResp.User.Email,
-		}); err != nil {
-			return fmt.Errorf("failed to save config: %w", err)
-		}
-		output.Current.PrintMessage("No identities found — create one with `ravi identity create`")
-		return nil
+		// Fresh account with no identity yet (signup no longer auto-provisions
+		// one). Create the first identity automatically so the caller — often an
+		// autonomous agent authenticating headlessly — is immediately ready to
+		// use Ravi, with no interactive selection step.
+		return d.createFirstIdentity(tokenResp)
 	}
 
 	var selected api.Identity
@@ -208,6 +204,55 @@ func (d *DeviceFlow) handleLogin(tokenResp *api.DeviceTokenResponse) error {
 	}
 
 	output.Current.PrintMessage(fmt.Sprintf("Identity set: %s", identityLabel(selected)))
+	return nil
+}
+
+// createFirstIdentity provisions the user's first identity right after signup
+// (when the account has none) and saves it as the active identity. The free
+// plan includes one identity with an email inbox and a phone number, so this
+// leaves a headless caller fully set up: management key + identity key + a
+// usable email/phone, no interactive prompt.
+func (d *DeviceFlow) createFirstIdentity(tokenResp *api.DeviceTokenResponse) error {
+	// Persist the management key first so an authenticated client can be built.
+	if err := config.SaveGlobalConfig(&config.Config{
+		ManagementKey: tokenResp.ManagementKey,
+		UserEmail:     tokenResp.User.Email,
+	}); err != nil {
+		return fmt.Errorf("saving temp config: %w", err)
+	}
+	mgmtClient, err := api.NewManagementClient()
+	if err != nil {
+		return fmt.Errorf("creating management client: %w", err)
+	}
+
+	output.Current.PrintMessage("Creating your first identity...")
+	identity, err := mgmtClient.CreateIdentity("", "", "", false)
+	if err != nil {
+		return fmt.Errorf("creating first identity: %w", err)
+	}
+
+	// The create response carries a one-time identity key; fall back to minting
+	// one if the server omitted it.
+	identityKey := identity.APIKey
+	if identityKey == "" {
+		keyResp, err := mgmtClient.CreateIdentityKey(identity.UUID, "cli")
+		if err != nil {
+			return fmt.Errorf("creating identity key: %w", err)
+		}
+		identityKey = keyResp.Key
+	}
+
+	if err := config.SaveGlobalConfig(&config.Config{
+		ManagementKey: tokenResp.ManagementKey,
+		IdentityKey:   identityKey,
+		IdentityUUID:  identity.UUID,
+		IdentityName:  identity.Name,
+		UserEmail:     tokenResp.User.Email,
+	}); err != nil {
+		return fmt.Errorf("saving config: %w", err)
+	}
+
+	output.Current.PrintMessage(fmt.Sprintf("Identity created: %s", identityLabel(*identity)))
 	return nil
 }
 

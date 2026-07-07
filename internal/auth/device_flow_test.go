@@ -12,7 +12,6 @@ import (
 
 	"github.com/ravi-hq/cli/internal/api"
 	"github.com/ravi-hq/cli/internal/config"
-	"github.com/ravi-hq/cli/internal/version"
 )
 
 func TestMain(m *testing.M) {
@@ -46,16 +45,11 @@ func withTempHome(t *testing.T) (tmpDir string, cleanup func()) {
 	return tmpDir, cleanup
 }
 
-// withAPIBaseURL is a test helper that temporarily sets the version.APIBaseURL.
+// withAPIBaseURL points the hosted API client at a local httptest server.
 func withAPIBaseURL(t *testing.T, url string) func() {
 	t.Helper()
-
-	original := version.APIBaseURL
-	version.APIBaseURL = url
-
-	return func() {
-		version.APIBaseURL = original
-	}
+	t.Setenv("RAVI_CLI_TEST_API_BASE_URL", url)
+	return func() {}
 }
 
 // TestNewDeviceFlow_Success verifies that NewDeviceFlow creates a flow handler.
@@ -265,9 +259,9 @@ func TestDeviceFlowStruct(t *testing.T) {
 }
 
 func TestIdentityLabel_NameAndEmail(t *testing.T) {
-	label := identityLabel(api.Identity{Name: "Personal", Email: "user@ravi.id"})
-	if label != "Personal (user@ravi.id)" {
-		t.Errorf("identityLabel() = %q, want %q", label, "Personal (user@ravi.id)")
+	label := identityLabel(api.Identity{Name: "Personal", Email: "user@ravi.app"})
+	if label != "Personal (user@ravi.app)" {
+		t.Errorf("identityLabel() = %q, want %q", label, "Personal (user@ravi.app)")
 	}
 }
 
@@ -286,9 +280,9 @@ func TestIdentityLabel_NameOnly(t *testing.T) {
 }
 
 func TestIdentityLabel_EmailPreferredOverPhone(t *testing.T) {
-	label := identityLabel(api.Identity{Name: "Both", Email: "user@ravi.id", Phone: "+1555"})
-	if label != "Both (user@ravi.id)" {
-		t.Errorf("identityLabel() = %q, want %q", label, "Both (user@ravi.id)")
+	label := identityLabel(api.Identity{Name: "Both", Email: "user@ravi.app", Phone: "+1555"})
+	if label != "Both (user@ravi.app)" {
+		t.Errorf("identityLabel() = %q, want %q", label, "Both (user@ravi.app)")
 	}
 }
 
@@ -312,7 +306,7 @@ func TestHandleSignup_SavesConfig(t *testing.T) {
 	tokenResp := &api.DeviceTokenResponse{
 		ManagementKey: "ravi_mgmt_signup",
 		IdentityKey:   "ravi_id_signup",
-		Identity:      &api.Identity{UUID: "id-1", Name: "Personal", Email: "test@ravi.id"},
+		Identity:      &api.Identity{UUID: "id-1", Name: "Personal", Email: "test@ravi.app"},
 		User:          api.User{Email: "test@example.com"},
 	}
 
@@ -379,11 +373,27 @@ func TestHandleSignup_NoIdentity(t *testing.T) {
 	}
 }
 
+// TestHandleLogin_NoIdentities verifies the agent-friendly path: a fresh account
+// with no identity auto-creates its first one and saves it as active, so a
+// headless caller ends up with a usable identity key without any prompt.
 func TestHandleLogin_NoIdentities(t *testing.T) {
 	_, cleanupHome := withTempHome(t)
 	defer cleanupHome()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// POST /api/identities/ returns the created identity plus its one-time key.
+		if r.URL.Path == "/api/identities/" && r.Method == "POST" {
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(api.Identity{
+				UUID:   "id-first",
+				Name:   "Auto Agent",
+				Email:  "auto.agent@ravi.app",
+				Phone:  "+15551230000",
+				APIKey: "ravi_id_first",
+			})
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -414,8 +424,62 @@ func TestHandleLogin_NoIdentities(t *testing.T) {
 	if cfg.ManagementKey != "ravi_mgmt_test" {
 		t.Errorf("ManagementKey = %q, want ravi_mgmt_test", cfg.ManagementKey)
 	}
-	if cfg.IdentityKey != "" {
-		t.Errorf("IdentityKey = %q, want empty", cfg.IdentityKey)
+	if cfg.IdentityKey != "ravi_id_first" {
+		t.Errorf("IdentityKey = %q, want ravi_id_first", cfg.IdentityKey)
+	}
+	if cfg.IdentityUUID != "id-first" {
+		t.Errorf("IdentityUUID = %q, want id-first", cfg.IdentityUUID)
+	}
+	if cfg.IdentityName != "Auto Agent" {
+		t.Errorf("IdentityName = %q, want Auto Agent", cfg.IdentityName)
+	}
+}
+
+// TestHandleLogin_NoIdentities_MintsKeyWhenServerOmitsIt verifies the fallback:
+// if the create response carries no api_key, the CLI mints an identity key.
+func TestHandleLogin_NoIdentities_MintsKeyWhenServerOmitsIt(t *testing.T) {
+	_, cleanupHome := withTempHome(t)
+	defer cleanupHome()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/api/identities/" && r.Method == "POST":
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(api.Identity{UUID: "id-first", Name: "Auto Agent"})
+		case r.URL.Path == "/api/auth/keys/identity/" && r.Method == "POST":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(api.CreateIdentityKeyResponse{Key: "ravi_id_minted", IdentityUUID: "id-first", Label: "cli"})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	cleanupURL := withAPIBaseURL(t, server.URL)
+	defer cleanupURL()
+
+	flow, err := NewDeviceFlow()
+	if err != nil {
+		t.Fatalf("NewDeviceFlow() error = %v", err)
+	}
+
+	tokenResp := &api.DeviceTokenResponse{
+		ManagementKey: "ravi_mgmt_test",
+		Identities:    []api.Identity{},
+		User:          api.User{Email: "test@example.com"},
+	}
+
+	if err := flow.handleLogin(tokenResp); err != nil {
+		t.Fatalf("handleLogin() error = %v", err)
+	}
+
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.IdentityKey != "ravi_id_minted" {
+		t.Errorf("IdentityKey = %q, want ravi_id_minted", cfg.IdentityKey)
 	}
 }
 
@@ -449,7 +513,7 @@ func TestHandleLogin_SingleIdentity(t *testing.T) {
 
 	tokenResp := &api.DeviceTokenResponse{
 		ManagementKey: "ravi_mgmt_login",
-		Identities:    []api.Identity{{UUID: "id-single", Name: "Personal", Email: "user@ravi.id"}},
+		Identities:    []api.Identity{{UUID: "id-single", Name: "Personal", Email: "user@ravi.app"}},
 		User:          api.User{Email: "test@example.com"},
 	}
 
@@ -507,8 +571,8 @@ func TestHandleLogin_MultipleIdentities(t *testing.T) {
 	tokenResp := &api.DeviceTokenResponse{
 		ManagementKey: "ravi_mgmt_multi",
 		Identities: []api.Identity{
-			{UUID: "id-1", Name: "Work", Email: "work@ravi.id"},
-			{UUID: "id-2", Name: "Personal", Email: "personal@ravi.id"},
+			{UUID: "id-1", Name: "Work", Email: "work@ravi.app"},
+			{UUID: "id-2", Name: "Personal", Email: "personal@ravi.app"},
 		},
 		User: api.User{Email: "test@example.com"},
 	}
@@ -683,7 +747,7 @@ func TestHandleLogin_CreateIdentityKeyError(t *testing.T) {
 
 	tokenResp := &api.DeviceTokenResponse{
 		ManagementKey: "ravi_mgmt_test",
-		Identities:    []api.Identity{{UUID: "id-1", Name: "Work", Email: "work@ravi.id"}},
+		Identities:    []api.Identity{{UUID: "id-1", Name: "Work", Email: "work@ravi.app"}},
 		User:          api.User{Email: "test@example.com"},
 	}
 
@@ -717,7 +781,7 @@ func TestRun_Success(t *testing.T) {
 			json.NewEncoder(w).Encode(api.DeviceTokenResponse{
 				ManagementKey: "ravi_mgmt_run",
 				IdentityKey:   "ravi_id_run",
-				Identity:      &api.Identity{UUID: "run-id", Name: "RunTest", Email: "run@ravi.id"},
+				Identity:      &api.Identity{UUID: "run-id", Name: "RunTest", Email: "run@ravi.app"},
 				User:          api.User{Email: "run@example.com"},
 			})
 		default:
@@ -980,7 +1044,7 @@ func TestRun_LoginFlowWithIdentities(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(api.DeviceTokenResponse{
 				ManagementKey: "ravi_mgmt_login_run",
-				Identities:    []api.Identity{{UUID: "id-run", Name: "RunLogin", Email: "run@ravi.id"}},
+				Identities:    []api.Identity{{UUID: "id-run", Name: "RunLogin", Email: "run@ravi.app"}},
 				User:          api.User{Email: "run@example.com"},
 			})
 		case "/api/auth/keys/identity/":
@@ -1129,7 +1193,7 @@ func TestHandleLogin_SaveTempConfigError(t *testing.T) {
 
 	tokenResp := &api.DeviceTokenResponse{
 		ManagementKey: "ravi_mgmt_test",
-		Identities:    []api.Identity{{UUID: "id-1", Name: "Work", Email: "w@ravi.id"}},
+		Identities:    []api.Identity{{UUID: "id-1", Name: "Work", Email: "w@ravi.app"}},
 		User:          api.User{Email: "test@example.com"},
 	}
 
