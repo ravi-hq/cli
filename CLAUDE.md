@@ -9,7 +9,7 @@ access to their provisioned email, phone, and credentials.
 # Identity management
 ravi identity list                # List all identities
 ravi identity create --name "X"   # Create a new identity
-ravi identity use <uuid>           # Switch active identity
+ravi identity use <uuid>           # Replace the one active identity in this config file
 
 # Identity info
 ravi get email                    # Get assigned email address
@@ -50,7 +50,9 @@ ravi feedback "Your feedback message"   # Send feedback to Ravi team
 ravi auth status                  # Check authentication
 ```
 
-**Agent workflow:** Select identity (`ravi identity use`) → get email/phone → sign up for service → wait → check inbox for OTP → complete verification.
+**CLI model:** one active identity per machine / config file. Shared `~/.ravi/config.json` cannot run multiple agents. Cursor agents should use the MCP Connect card (per-agent credentials), not `ravi auth login`. Several agents on one host call https://api.ravi.app with per-identity `ravi_id_` keys.
+
+**Agent workflow (this machine's CLI):** get email/phone → sign up for service → wait → check inbox for OTP → complete verification.
 
 See `.claude/skills/ravi-cli.md` for detailed usage instructions.
 
@@ -93,14 +95,14 @@ pkg/cli/               # Cobra commands (identity, inbox, passwords, secrets, au
 
 ### Identity Resolution
 
-Active identity is stored in `config.json` with:
+The CLI holds **one active identity per config file**:
 - `identity_uuid` + `identity_name` — which identity is active
 - `management_key` — API key for account-level operations
 - `identity_key` — API key scoped to the active identity
 
-Resolution order:
+Resolution order (still one identity, not a multi-agent runtime):
 
-1. `.ravi/config.json` in CWD (project-level override)
+1. `.ravi/config.json` in CWD
 2. `~/.ravi/config.json` (global default)
 
 ### Key Patterns
