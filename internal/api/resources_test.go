@@ -32,21 +32,33 @@ func TestGetPhone_Success(t *testing.T) {
 }
 
 func TestGetPhone_ScopedByIdentity(t *testing.T) {
+	const wantUUID = "id-uuid-1"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.URL.Query().Get("identity"); got != "id-uuid-1" {
-			t.Errorf("identity param = %q, want id-uuid-1", got)
+		if r.URL.Path != PathPhone {
+			t.Errorf("path = %q, want %q", r.URL.Path, PathPhone)
+		}
+		if got := r.URL.Query().Get("identity"); got != wantUUID {
+			t.Errorf("identity param = %q, want %q", got, wantUUID)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode([]Phone{
+				{ID: 1, PhoneNumber: "+15632929067"},
+			})
+			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]Phone{
-			{ID: 1, PhoneNumber: "+15551234567"},
+			{ID: 2, PhoneNumber: "+15732572098"},
 		})
 	}))
 	defer server.Close()
 
-	client := newTestClient(server.URL).WithIdentity("id-uuid-1")
-	_, err := client.GetPhone()
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	phone, err := client.GetPhone()
 	if err != nil {
 		t.Fatalf("GetPhone() error = %v", err)
+	}
+	if phone.PhoneNumber != "+15732572098" {
+		t.Errorf("PhoneNumber = %q, want +15732572098 (identity-scoped number)", phone.PhoneNumber)
 	}
 }
 

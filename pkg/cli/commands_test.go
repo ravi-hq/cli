@@ -87,6 +87,100 @@ func TestGetPhoneCmd(t *testing.T) {
 	}
 }
 
+// TestGetPhoneCmd_IdentityFlag verifies `ravi get phone --identity` sends
+// ?identity=<uuid> on GET /api/phone/ and displays that identity's number,
+// not another identity's number from an unscoped list.
+func TestGetPhoneCmd_IdentityFlag(t *testing.T) {
+	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
+	var gotIdentity string
+	var gotPath string
+
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		gotPath = r.URL.Path
+		gotIdentity = r.URL.Query().Get("identity")
+		if r.URL.Path != api.PathPhone {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		// Unscoped list would return the other identity's number first.
+		if gotIdentity == wantUUID {
+			json.NewEncoder(w).Encode([]api.Phone{{ID: 2, PhoneNumber: "+15732572098"}})
+			return
+		}
+		json.NewEncoder(w).Encode([]api.Phone{{ID: 1, PhoneNumber: "+15632929067"}})
+	}))
+	_ = server
+	defer cleanup()
+
+	identityFlag = wantUUID
+	defer func() { identityFlag = "" }()
+
+	if err := getPhoneCmd.RunE(getPhoneCmd, nil); err != nil {
+		t.Fatalf("getPhoneCmd.RunE() error = %v", err)
+	}
+	if gotPath != api.PathPhone {
+		t.Errorf("path = %q, want %q", gotPath, api.PathPhone)
+	}
+	if gotIdentity != wantUUID {
+		t.Errorf("identity param = %q, want %q (CLI dropped --identity on phone GET)", gotIdentity, wantUUID)
+	}
+}
+
+// TestGetPhoneCmd_IdentityFlagParsedFromArgs goes through cobra Execute so
+// `ravi get phone --identity <uuid>` is parsed the same way a user types it.
+func TestGetPhoneCmd_IdentityFlagParsedFromArgs(t *testing.T) {
+	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
+	var gotIdentity string
+
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == api.PathPhone {
+			gotIdentity = r.URL.Query().Get("identity")
+			json.NewEncoder(w).Encode([]api.Phone{{ID: 2, PhoneNumber: "+15732572098"}})
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	_ = server
+	defer cleanup()
+	defer func() {
+		identityFlag = ""
+		rootCmd.SetArgs(nil)
+	}()
+
+	rootCmd.SetArgs([]string{"get", "phone", "--identity", wantUUID})
+	if err := Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if gotIdentity != wantUUID {
+		t.Errorf("identity param = %q, want %q", gotIdentity, wantUUID)
+	}
+}
+
+func TestGetEmailCmd_IdentityFlag(t *testing.T) {
+	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
+	var gotIdentity string
+
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		gotIdentity = r.URL.Query().Get("identity")
+		json.NewEncoder(w).Encode([]api.Email{{ID: 1, Email: "growth@ravi.id"}})
+	}))
+	_ = server
+	defer cleanup()
+
+	identityFlag = wantUUID
+	defer func() { identityFlag = "" }()
+
+	if err := getEmailCmd.RunE(getEmailCmd, nil); err != nil {
+		t.Fatalf("getEmailCmd.RunE() error = %v", err)
+	}
+	if gotIdentity != wantUUID {
+		t.Errorf("identity param = %q, want %q", gotIdentity, wantUUID)
+	}
+}
+
 func TestGetEmailCmd(t *testing.T) {
 	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

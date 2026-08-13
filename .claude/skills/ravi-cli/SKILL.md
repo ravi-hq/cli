@@ -7,7 +7,7 @@ description: Use when working with the Ravi CLI — identity, inbox, passwords, 
 
 You have access to `ravi`, a CLI that gives you your own phone number, email address, and credential store. Use it to sign up for services, receive and act on verification codes, send SMS, place calls, and store passwords — all autonomously.
 
-An identity has an **email** channel (an address) and a **phone** channel (a number). The API key is an auth fence, not an identity selector: use `--identity <uuid>` to target a specific identity for per-identity calls (contacts, passwords, secrets, calls, messages). When omitted, the active identity key scopes the request.
+An identity has an **email** channel (an address) and a **phone** channel (a number). The API key is an auth fence, not an identity selector: use `--identity <uuid>` to target a specific identity for per-identity calls (get, inbox, contacts, passwords, secrets, calls, messages). When omitted, the active identity key scopes the request.
 
 ## Prerequisites
 

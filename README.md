@@ -188,7 +188,7 @@ An identity has an **email** channel and a **phone** channel.
 | Flag | Description |
 |------|-------------|
 | `--human` | Output in human-readable format (default is JSON) |
-| `--identity <uuid>` | Target a specific identity for per-identity calls (contacts, passwords, secrets, calls, events, messages). When omitted, the active identity key scopes the request. |
+| `--identity <uuid>` | Target a specific identity for per-identity calls (get, inbox, contacts, passwords, secrets, calls, events, messages). When omitted, the active identity key scopes the request. |
 | `--help` | Show help for any command |
 | `--version` | Show version information |
 

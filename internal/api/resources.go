@@ -6,8 +6,10 @@ import (
 	"net/url"
 )
 
-// GetPhone fetches the user's assigned Ravi phone number.
-// Returns the first phone number associated with the authenticated user.
+// GetPhone fetches the identity's assigned Ravi phone number.
+// When the client is scoped with WithIdentity, GET /api/phone/?identity=<uuid>
+// is used so a management key can target one identity. Returns the first
+// phone in the (identity-filtered) response.
 func (c *Client) GetPhone() (*Phone, error) {
 	var result []Phone
 	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathPhone, nil), nil, &result); err != nil {
