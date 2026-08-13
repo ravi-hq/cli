@@ -44,7 +44,10 @@ claude plugin install ravi@ravi
 ravi auth login
 ```
 
-Open https://ravi.id/device and enter the code the CLI prints.
+This is an RFC 8628 device-code flow against https://api.ravi.app. Open
+https://ravi.id/device and enter the code the CLI prints. Keys (`ravi_mgmt_` /
+`ravi_id_`) are stored in `~/.ravi/config.json`. Auth commands are
+`login` / `logout` / `status` only.
 
 After these steps, any Claude Code session will know how to
 use `ravi`.

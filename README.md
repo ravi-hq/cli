@@ -86,7 +86,10 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
    ravi auth login
    ```
 
-   Open https://ravi.id/device and enter the code the CLI prints (it also tries to open your browser).
+   This is an RFC 8628 device-code flow against https://api.ravi.app. Open
+   https://ravi.id/device and enter the code the CLI prints (it also tries to
+   open your browser). Keys (`ravi_mgmt_` / `ravi_id_`) are stored in
+   `~/.ravi/config.json`.
 
 2. **Check your inbox:**
 
@@ -110,9 +113,12 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 
 ### Authentication
 
+Auth is API keys only (no JWT, no `auth.json`, no `ravi auth refresh`). The
+only commands are:
+
 | Command | Description |
 |---------|-------------|
-| `ravi auth login` | Authenticate via browser (stores API keys in `~/.ravi/config.json`) |
+| `ravi auth login` | RFC 8628 device-code login against https://api.ravi.app. Visit https://ravi.id/device and enter the printed code. Stores `ravi_mgmt_` / `ravi_id_` keys in `~/.ravi/config.json`. |
 | `ravi auth logout` | Clear stored credentials |
 | `ravi auth status` | Show current authentication status |
 
@@ -249,9 +255,14 @@ ravi inbox email | jq -r '.[0].subject'
 
 Configuration is stored in `~/.ravi/config.json` with secure file permissions (0600):
 
-- **`management_key`** — API key for account-level operations (create identities, etc.)
-- **`identity_key`** — API key scoped to the active identity
+- **`management_key`** — `ravi_mgmt_...` key for account-level operations (create identities, etc.)
+- **`identity_key`** — `ravi_id_...` key scoped to the active identity
 - **`identity_uuid`** + **`identity_name`** — which identity is currently active
+- **`user_email`** — the account email from device-code login
+
+The API host is https://api.ravi.app. Requests send the API key as
+`Authorization: Bearer <key>`. There is no `RAVI_ACCESS_TOKEN`, no
+`X-Ravi-Identity` header, and no token refresh command.
 
 A `.ravi/config.json` in the current working directory overrides the global config, allowing per-project identity selection.
 
