@@ -7,7 +7,11 @@ description: Use when working with the Ravi CLI — identity, inbox, passwords, 
 
 You have access to `ravi`, a CLI that gives you your own phone number, email address, and credential store. Use it to sign up for services, receive and act on verification codes, send SMS, place calls, and store passwords — all autonomously.
 
-An identity has an **email** channel (an address) and a **phone** channel (a number). The API key is an auth fence, not an identity selector: use `--identity <uuid>` to target a specific identity for per-identity calls (contacts, passwords, secrets, calls, messages). When omitted, the active identity key scopes the request.
+The CLI holds **one active identity per machine / config file** (`~/.ravi/config.json`). That file cannot run multiple agents. `ravi identity use` replaces the single active identity; it is not a multi-agent switcher.
+
+- **Cursor:** use the MCP Connect card (per-agent credentials), not `ravi auth login`.
+- **Several agents on one host:** call https://api.ravi.app with per-identity `ravi_id_` keys (`Authorization: Bearer ravi_id_...`).
+- `--identity` scopes a single request so it does not leak another identity's resources (for example `ravi get phone --identity`). It does not change the machine's active identity.
 
 ## Prerequisites
 
@@ -17,7 +21,7 @@ Verify you're authenticated before using any command:
 ravi auth status
 ```
 
-If `"authenticated": false`, tell the user to run `ravi auth login` (requires browser interaction — you cannot do this yourself).
+If `"authenticated": false`, this machine's CLI is not bound. For Cursor, use the MCP Connect card (per-agent credentials) — not `ravi auth login`. For this machine's CLI only, the human can run `ravi auth login` (browser at https://ravi.id/device). That writes one identity into `~/.ravi/config.json`.
 
 ## Your Identity
 

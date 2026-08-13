@@ -6,19 +6,41 @@ import (
 	"net/url"
 )
 
-// GetPhone fetches the user's assigned Ravi phone number.
-// Returns the first phone number associated with the authenticated user.
+// GetPhone fetches the identity's assigned Ravi phone number.
+// When the client is scoped with WithIdentity, the phone is taken from
+// GET /api/identities/<uuid>/ — not the first row of GET /api/phone/, which
+// currently ignores ?identity= and returns the account list. Unscoped calls
+// still hit /api/phone/ but refuse to pick an arbitrary row when more than
+// one number is returned.
 func (c *Client) GetPhone() (*Phone, error) {
+	if c.identity != "" {
+		return c.phoneFromIdentity(c.identity)
+	}
+
 	var result []Phone
-	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathPhone, nil), nil, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodGet, PathPhone, nil, &result); err != nil {
 		return nil, err
 	}
 
 	if len(result) == 0 {
 		return nil, fmt.Errorf("no phone number assigned")
 	}
+	if len(result) > 1 {
+		return nil, fmt.Errorf("multiple phone numbers; pass --identity <uuid>")
+	}
 
 	return &result[0], nil
+}
+
+func (c *Client) phoneFromIdentity(uuid string) (*Phone, error) {
+	ident, err := c.GetIdentity(uuid)
+	if err != nil {
+		return nil, err
+	}
+	if ident.Phone == "" {
+		return nil, fmt.Errorf("no phone number assigned")
+	}
+	return &Phone{PhoneNumber: ident.Phone}, nil
 }
 
 // GetEmail fetches the user's assigned Ravi email address.

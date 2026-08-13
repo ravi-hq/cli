@@ -21,31 +21,37 @@ Users must install `ravi` separately.
 
 ## Installation
 
-### 1. Install the CLI
+### Cursor (first-class)
 
-Download the latest release from the
-[releases page](https://github.com/ravi-hq/cli/releases)
-or build from source:
+Use the **MCP Connect card** (per-agent credentials). That is the supported
+path for Cursor agents — not `ravi auth login`, which binds one identity into
+a shared `~/.ravi/config.json` that cannot run multiple agents.
 
-```bash
-make build
-```
+Several agents on one host should call https://api.ravi.app with per-identity
+`ravi_id_` keys.
 
-### 2. Install the plugin
+### Claude Code plugin
 
-```bash
-claude plugin marketplace add ravi-hq/claude-code-plugin
-claude plugin install ravi@ravi
-```
+1. Install the CLI from the
+   [releases page](https://github.com/ravi-hq/cli/releases)
+   or `make build`.
 
-### 3. Authenticate
+2. Install the plugin:
 
-```bash
-ravi auth login
-```
+   ```bash
+   claude plugin marketplace add ravi-hq/claude-code-plugin
+   claude plugin install ravi@ravi
+   ```
 
-After these steps, any Claude Code session will know how to
-use `ravi`.
+3. Optional — bind this machine's CLI (one identity per config file):
+
+   ```bash
+   ravi auth login
+   ```
+
+   RFC 8628 device-code against https://api.ravi.app. Open https://ravi.id/device
+   and enter the code the CLI prints. Keys (`ravi_mgmt_` / `ravi_id_`) go in
+   `~/.ravi/config.json`. Auth commands are `login` / `logout` / `status` only.
 
 ## Plugin repo
 

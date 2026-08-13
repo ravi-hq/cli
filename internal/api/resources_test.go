@@ -32,21 +32,79 @@ func TestGetPhone_Success(t *testing.T) {
 }
 
 func TestGetPhone_ScopedByIdentity(t *testing.T) {
+	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
+	var phoneListHits int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.URL.Query().Get("identity"); got != "id-uuid-1" {
-			t.Errorf("identity param = %q, want id-uuid-1", got)
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case PathPhone:
+			phoneListHits++
+			// Unfiltered account list: Personal is always first.
+			json.NewEncoder(w).Encode([]Phone{
+				{ID: 8, PhoneNumber: "+15632929067"},
+				{ID: 9, PhoneNumber: "+15732572098"},
+			})
+		case PathIdentities + wantUUID + "/":
+			json.NewEncoder(w).Encode(Identity{
+				UUID:  wantUUID,
+				Name:  "Growth",
+				Phone: "+15732572098",
+			})
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
 		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	phone, err := client.GetPhone()
+	if err != nil {
+		t.Fatalf("GetPhone() error = %v", err)
+	}
+	if phone.PhoneNumber != "+15732572098" {
+		t.Errorf("PhoneNumber = %q, want +15732572098 (identity object, not phone-list first row)", phone.PhoneNumber)
+	}
+	if phoneListHits != 0 {
+		t.Errorf("GET /api/phone/ hits = %d, want 0 when identity is scoped", phoneListHits)
+	}
+}
+
+func TestGetPhone_UnscopedMultipleRequiresIdentity(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode([]Phone{
-			{ID: 1, PhoneNumber: "+15551234567"},
+			{ID: 8, PhoneNumber: "+15632929067"},
+			{ID: 9, PhoneNumber: "+15732572098"},
 		})
 	}))
 	defer server.Close()
 
-	client := newTestClient(server.URL).WithIdentity("id-uuid-1")
+	client := newTestClient(server.URL)
 	_, err := client.GetPhone()
-	if err != nil {
-		t.Fatalf("GetPhone() error = %v", err)
+	if err == nil {
+		t.Fatal("GetPhone() error = nil, want error instead of first row of the account list")
+	}
+	if !strings.Contains(err.Error(), "--identity") {
+		t.Errorf("Error = %q, want to mention --identity", err.Error())
+	}
+}
+
+func TestGetPhone_IdentityMissingPhone(t *testing.T) {
+	const wantUUID = "id-no-phone"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Identity{UUID: wantUUID, Name: "Bare"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	_, err := client.GetPhone()
+	if err == nil {
+		t.Fatal("GetPhone() error = nil, want error for empty identity phone")
+	}
+	if !strings.Contains(err.Error(), "no phone number") {
+		t.Errorf("Error = %q, want to contain 'no phone number'", err.Error())
 	}
 }
 

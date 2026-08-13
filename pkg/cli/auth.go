@@ -17,7 +17,9 @@ var authCmd = &cobra.Command{
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with Ravi",
-	Long:  "Start the device code flow to authenticate with your Ravi account.",
+	Long: `Start the device code flow to authenticate with your Ravi account.
+
+Visit https://ravi.id/device and enter the code printed by this command.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flow, err := auth.NewDeviceFlow()
 		if err != nil {

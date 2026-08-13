@@ -80,13 +80,27 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 
 ## Quick Start
 
-1. **Login to your account:**
+The CLI holds **one active identity per machine / config file**. Shared
+`~/.ravi/config.json` cannot run multiple agents. `ravi identity use` replaces
+that single active identity; it is not a multi-agent runtime.
+
+- **Cursor:** use the MCP Connect card (per-agent credentials). That is the
+  first-class path — not `ravi auth login`.
+- **Multiple agents on one host:** call the HTTP API at https://api.ravi.app
+  with a per-identity `ravi_id_` key (`Authorization: Bearer ravi_id_...`).
+- **This machine's CLI:** `ravi auth login` binds one identity into
+  `~/.ravi/config.json` (or `.ravi/config.json` in the current directory).
+
+1. **Login (this machine's CLI only):**
 
    ```bash
    ravi auth login
    ```
 
-   This opens your browser for OAuth authentication.
+   This is an RFC 8628 device-code flow against https://api.ravi.app. Open
+   https://ravi.id/device and enter the code the CLI prints (it also tries to
+   open your browser). Keys (`ravi_mgmt_` / `ravi_id_`) are stored in
+   `~/.ravi/config.json`.
 
 2. **Check your inbox:**
 
@@ -110,9 +124,12 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 
 ### Authentication
 
+Auth is API keys only (no JWT, no `auth.json`, no `ravi auth refresh`). The
+only commands are:
+
 | Command | Description |
 |---------|-------------|
-| `ravi auth login` | Authenticate via browser (stores API keys in `~/.ravi/config.json`) |
+| `ravi auth login` | RFC 8628 device-code login against https://api.ravi.app. Visit https://ravi.id/device and enter the printed code. Stores `ravi_mgmt_` / `ravi_id_` keys in `~/.ravi/config.json`. |
 | `ravi auth logout` | Clear stored credentials |
 | `ravi auth status` | Show current authentication status |
 
@@ -122,7 +139,7 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
 |---------|-------------|
 | `ravi identity list` | List all identities |
 | `ravi identity create --name "X"` | Create a new identity |
-| `ravi identity use <uuid>` | Set the active identity for this machine |
+| `ravi identity use <uuid>` | Replace the one active identity in this config file (not a multi-agent switch) |
 
 ### Resources
 
@@ -188,14 +205,18 @@ An identity has an **email** channel and a **phone** channel.
 | Flag | Description |
 |------|-------------|
 | `--human` | Output in human-readable format (default is JSON) |
-| `--identity <uuid>` | Target a specific identity for per-identity calls (contacts, passwords, secrets, calls, events, messages). When omitted, the active identity key scopes the request. |
+| `--identity <uuid>` | Scope a single request (get, inbox, contacts, passwords, secrets, calls, events, messages) so it does not leak another identity's resources. Does not change the machine's active identity and is not how you run multiple agents. |
 | `--help` | Show help for any command |
 | `--version` | Show version information |
 
-The API key is an **auth fence** — it defines what you're allowed to touch. The
-*caller* chooses the identity. A management key with `--identity <uuid>` targets
-one identity; an identity-scoped key is already fenced to its identity (and
-`--identity` must match it).
+The CLI is **one identity per config file**. A management key with `--identity <uuid>`
+scopes a single request (for example `ravi get phone --identity` must return that
+identity's number, not the first row of the account phone list). An identity-scoped
+`ravi_id_` key is already fenced to its identity.
+
+To run several agents on one host, do not share `~/.ravi/config.json` and do not
+treat `ravi identity use` as a session switcher. Give each agent its own
+`ravi_id_` key and call https://api.ravi.app, or use the Cursor MCP Connect card.
 
 ## JSON Output for AI Agents
 
@@ -247,13 +268,20 @@ ravi inbox email | jq -r '.[0].subject'
 
 ## Configuration
 
-Configuration is stored in `~/.ravi/config.json` with secure file permissions (0600):
+Configuration is stored in `~/.ravi/config.json` with secure file permissions (0600).
+That file holds **one active identity**. Sharing it across agents is unsupported.
 
-- **`management_key`** — API key for account-level operations (create identities, etc.)
-- **`identity_key`** — API key scoped to the active identity
+- **`management_key`** — `ravi_mgmt_...` key for account-level operations (create identities, etc.)
+- **`identity_key`** — `ravi_id_...` key scoped to the active identity
 - **`identity_uuid`** + **`identity_name`** — which identity is currently active
+- **`user_email`** — the account email from device-code login
 
-A `.ravi/config.json` in the current working directory overrides the global config, allowing per-project identity selection.
+The API host is https://api.ravi.app. Requests send the API key as
+`Authorization: Bearer <key>`. There is no `RAVI_ACCESS_TOKEN`, no
+`X-Ravi-Identity` header, and no token refresh command.
+
+A `.ravi/config.json` in the current working directory overrides the global file.
+Each file still holds one active identity — this is not a multi-agent runtime.
 
 ## Development
 

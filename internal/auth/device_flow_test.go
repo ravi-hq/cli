@@ -1,13 +1,16 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/ravi-hq/cli/internal/api"
@@ -222,6 +225,101 @@ func TestOpenBrowser_CurrentPlatform(t *testing.T) {
 		if err == nil {
 			t.Errorf("openBrowserImpl() on unsupported platform %s should return error", runtime.GOOS)
 		}
+	}
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+
+	done := make(chan string)
+	go func() {
+		var buf bytes.Buffer
+		_, _ = io.Copy(&buf, r)
+		done <- buf.String()
+	}()
+
+	fn()
+	_ = w.Close()
+	return <-done
+}
+
+func TestDeviceVerifyURL(t *testing.T) {
+	tests := []struct {
+		name   string
+		apiURI string
+		code   string
+		want   string
+	}{
+		{
+			name:   "production API verify path",
+			apiURI: "https://api.ravi.app/api/auth/device/verify/",
+			code:   "TEST-1234",
+			want:   "https://ravi.id/device?user_code=TEST-1234",
+		},
+		{
+			name:   "production API verify path without trailing slash",
+			apiURI: "https://api.ravi.app/api/auth/device/verify",
+			code:   "ABCD-EFGH",
+			want:   "https://ravi.id/device?user_code=ABCD-EFGH",
+		},
+		{
+			name:   "already public device URL",
+			apiURI: "https://ravi.id/device",
+			code:   "TEST-1234",
+			want:   "https://ravi.id/device?user_code=TEST-1234",
+		},
+		{
+			name:   "ravi.app device URL rewrites to ravi.id",
+			apiURI: "https://ravi.app/device",
+			code:   "TEST-1234",
+			want:   "https://ravi.id/device?user_code=TEST-1234",
+		},
+		{
+			name:   "empty verification URI falls back to public URL",
+			apiURI: "",
+			code:   "TEST-1234",
+			want:   "https://ravi.id/device?user_code=TEST-1234",
+		},
+		{
+			name:   "localhost API verify path",
+			apiURI: "http://localhost:8000/api/auth/device/verify/",
+			code:   "TEST-1234",
+			want:   "http://localhost:8000/device?user_code=TEST-1234",
+		},
+		{
+			name:   "loopback API verify path",
+			apiURI: "http://127.0.0.1:8000/api/auth/device/verify/",
+			code:   "TEST-1234",
+			want:   "http://127.0.0.1:8000/device?user_code=TEST-1234",
+		},
+		{
+			name:   "custom frontend URL is kept",
+			apiURI: "http://127.0.0.1:0/verify",
+			code:   "TEST-1234",
+			want:   "http://127.0.0.1:0/verify?user_code=TEST-1234",
+		},
+		{
+			name:   "empty user code omits query",
+			apiURI: "https://api.ravi.app/api/auth/device/verify/",
+			code:   "",
+			want:   "https://ravi.id/device",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := deviceVerifyURL(tt.apiURI, tt.code)
+			if got != tt.want {
+				t.Errorf("deviceVerifyURL(%q, %q) = %q, want %q", tt.apiURI, tt.code, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -812,6 +910,73 @@ func TestRun_Success(t *testing.T) {
 	}
 	if cfg.IdentityKey != "ravi_id_run" {
 		t.Errorf("IdentityKey = %q, want ravi_id_run", cfg.IdentityKey)
+	}
+}
+
+func TestRun_PrintsPublicDeviceURL(t *testing.T) {
+	_, cleanupHome := withTempHome(t)
+	defer cleanupHome()
+
+	var openedURL string
+	origBrowser := OpenBrowser
+	OpenBrowser = func(url string) error {
+		openedURL = url
+		return nil
+	}
+	defer func() { OpenBrowser = origBrowser }()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.URL.Path {
+		case "/api/auth/device/":
+			json.NewEncoder(w).Encode(api.DeviceCodeResponse{
+				DeviceCode:      "test-device-code",
+				UserCode:        "TEST-1234",
+				VerificationURI: "https://api.ravi.app/api/auth/device/verify/",
+				ExpiresIn:       300,
+				Interval:        0,
+			})
+		case "/api/auth/device/token/":
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(api.DeviceTokenResponse{
+				ManagementKey: "ravi_mgmt_url",
+				IdentityKey:   "ravi_id_url",
+				Identity:      &api.Identity{UUID: "url-id", Name: "URLTest"},
+				User:          api.User{Email: "url@example.com"},
+			})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	cleanupURL := withAPIBaseURL(t, server.URL)
+	defer cleanupURL()
+
+	flow, err := NewDeviceFlow()
+	if err != nil {
+		t.Fatalf("NewDeviceFlow() error = %v", err)
+	}
+
+	wantURL := "https://ravi.id/device?user_code=TEST-1234"
+	out := captureStdout(t, func() {
+		if err := flow.Run(); err != nil {
+			t.Errorf("Run() error = %v", err)
+		}
+	})
+
+	if !strings.Contains(out, wantURL) {
+		t.Errorf("Run() stdout missing public device URL %q, got:\n%s", wantURL, out)
+	}
+	if strings.Contains(out, "api.ravi.app") || strings.Contains(out, "/api/auth/device/verify") {
+		t.Errorf("Run() stdout still prints API verify path, got:\n%s", out)
+	}
+	if !strings.Contains(out, "TEST-1234") {
+		t.Errorf("Run() stdout missing user code, got:\n%s", out)
+	}
+	if openedURL != wantURL {
+		t.Errorf("OpenBrowser URL = %q, want %q", openedURL, wantURL)
 	}
 }
 

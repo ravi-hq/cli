@@ -1,13 +1,16 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,6 +84,145 @@ func TestGetPhoneCmd(t *testing.T) {
 	err := getPhoneCmd.RunE(getPhoneCmd, nil)
 	if err != nil {
 		t.Fatalf("getPhoneCmd.RunE() error = %v", err)
+	}
+}
+
+// TestGetPhoneCmd_IdentityFlag verifies `ravi get phone --identity` uses the
+// phone on GET /api/identities/<id>/, not the first row of GET /api/phone/
+// (which currently ignores ?identity= and always starts with Personal).
+func TestGetPhoneCmd_IdentityFlag(t *testing.T) {
+	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
+	var gotIdentityPath string
+	var phoneListHits int
+
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case api.PathPhone:
+			phoneListHits++
+			json.NewEncoder(w).Encode([]api.Phone{
+				{ID: 8, PhoneNumber: "+15632929067"},
+				{ID: 9, PhoneNumber: "+15732572098"},
+			})
+		case api.PathIdentities + wantUUID + "/":
+			gotIdentityPath = r.URL.Path
+			json.NewEncoder(w).Encode(api.Identity{
+				UUID:  wantUUID,
+				Name:  "Growth",
+				Phone: "+15732572098",
+			})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	_ = server
+	defer cleanup()
+
+	identityFlag = wantUUID
+	defer func() { identityFlag = "" }()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	origStdout := os.Stdout
+	os.Stdout = w
+	runErr := getPhoneCmd.RunE(getPhoneCmd, nil)
+	_ = w.Close()
+	os.Stdout = origStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	out := buf.String()
+
+	if runErr != nil {
+		t.Fatalf("getPhoneCmd.RunE() error = %v", runErr)
+	}
+	if gotIdentityPath != api.PathIdentities+wantUUID+"/" {
+		t.Errorf("identity GET path = %q, want %s%s/", gotIdentityPath, api.PathIdentities, wantUUID)
+	}
+	if phoneListHits != 0 {
+		t.Errorf("GET /api/phone/ hits = %d, want 0", phoneListHits)
+	}
+	if !strings.Contains(out, "+15732572098") {
+		t.Errorf("stdout missing identity phone, got:\n%s", out)
+	}
+	if strings.Contains(out, "+15632929067") {
+		t.Errorf("stdout leaked account-list first row +15632929067, got:\n%s", out)
+	}
+}
+
+// TestGetPhoneCmd_IdentityFlagParsedFromArgs goes through cobra Execute so
+// `ravi get phone --identity <uuid>` is parsed the same way a user types it.
+func TestGetPhoneCmd_IdentityFlagParsedFromArgs(t *testing.T) {
+	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
+	var gotIdentityPath string
+
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case api.PathPhone:
+			json.NewEncoder(w).Encode([]api.Phone{{ID: 8, PhoneNumber: "+15632929067"}})
+		case api.PathIdentities + wantUUID + "/":
+			gotIdentityPath = r.URL.Path
+			json.NewEncoder(w).Encode(api.Identity{UUID: wantUUID, Phone: "+15732572098"})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	_ = server
+	defer cleanup()
+	defer func() {
+		identityFlag = ""
+		rootCmd.SetArgs(nil)
+	}()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	origStdout := os.Stdout
+	os.Stdout = w
+	rootCmd.SetArgs([]string{"get", "phone", "--identity", wantUUID})
+	runErr := Execute()
+	_ = w.Close()
+	os.Stdout = origStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	if runErr != nil {
+		t.Fatalf("Execute() error = %v", runErr)
+	}
+	if gotIdentityPath != api.PathIdentities+wantUUID+"/" {
+		t.Errorf("identity GET path = %q, want identities retrieve", gotIdentityPath)
+	}
+	if !strings.Contains(buf.String(), "+15732572098") {
+		t.Errorf("stdout missing identity phone, got:\n%s", buf.String())
+	}
+	if strings.Contains(buf.String(), "+15632929067") {
+		t.Errorf("stdout leaked first-row phone, got:\n%s", buf.String())
+	}
+}
+
+func TestGetEmailCmd_IdentityFlag(t *testing.T) {
+	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
+	var gotIdentity string
+
+	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		gotIdentity = r.URL.Query().Get("identity")
+		json.NewEncoder(w).Encode([]api.Email{{ID: 1, Email: "growth@ravi.id"}})
+	}))
+	_ = server
+	defer cleanup()
+
+	identityFlag = wantUUID
+	defer func() { identityFlag = "" }()
+
+	if err := getEmailCmd.RunE(getEmailCmd, nil); err != nil {
+		t.Fatalf("getEmailCmd.RunE() error = %v", err)
+	}
+	if gotIdentity != wantUUID {
+		t.Errorf("identity param = %q, want %q", gotIdentity, wantUUID)
 	}
 }
 
@@ -1072,6 +1214,14 @@ func TestRootCmd_SubcommandRegistration(t *testing.T) {
 // --- Auth commands ---
 
 func TestLoginCmd(t *testing.T) {
+	var openedURL string
+	origBrowser := auth.OpenBrowser
+	auth.OpenBrowser = func(url string) error {
+		openedURL = url
+		return nil
+	}
+	defer func() { auth.OpenBrowser = origBrowser }()
+
 	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1079,7 +1229,7 @@ func TestLoginCmd(t *testing.T) {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"device_code":      "test-device-code",
 				"user_code":        "TEST-1234",
-				"verification_uri": "http://127.0.0.1:0/verify",
+				"verification_uri": "https://api.ravi.app/api/auth/device/verify/",
 				"expires_in":       300,
 				"interval":         0,
 			})
@@ -1097,9 +1247,32 @@ func TestLoginCmd(t *testing.T) {
 	_ = server
 	defer cleanup()
 
-	err := loginCmd.RunE(loginCmd, nil)
+	r, w, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("loginCmd.RunE() error = %v", err)
+		t.Fatalf("pipe: %v", err)
+	}
+	origStdout := os.Stdout
+	os.Stdout = w
+	runErr := loginCmd.RunE(loginCmd, nil)
+	_ = w.Close()
+	os.Stdout = origStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	out := buf.String()
+
+	if runErr != nil {
+		t.Fatalf("loginCmd.RunE() error = %v", runErr)
+	}
+
+	wantURL := "https://ravi.id/device?user_code=TEST-1234"
+	if !strings.Contains(out, wantURL) {
+		t.Errorf("loginCmd stdout missing public device URL %q, got:\n%s", wantURL, out)
+	}
+	if strings.Contains(out, "/api/auth/device/verify") {
+		t.Errorf("loginCmd stdout still prints API verify path, got:\n%s", out)
+	}
+	if openedURL != wantURL {
+		t.Errorf("OpenBrowser URL = %q, want %q", openedURL, wantURL)
 	}
 }
 

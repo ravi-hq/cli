@@ -17,7 +17,11 @@ var identityProvisionPhoneFlag bool
 var identityCmd = &cobra.Command{
 	Use:   "identity",
 	Short: "Manage identities",
-	Long:  "List, create, and switch identities. Each identity bundles an email, phone, and credentials.",
+	Long: `List, create, and bind the one active identity for this config file.
+
+The CLI is one identity per machine / config file. identity use replaces that
+single binding. It is not a multi-agent runtime — run several agents with
+per-identity ravi_id_ keys against the HTTP API, or the Cursor MCP Connect card.`,
 }
 
 var identityListCmd = &cobra.Command{
@@ -58,9 +62,14 @@ var identityCreateCmd = &cobra.Command{
 
 var identityUseCmd = &cobra.Command{
 	Use:   "use <uuid>",
-	Short: "Set the active identity",
-	Long: `Set which identity is used for all ravi commands.
-Writes to .ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json.`,
+	Short: "Replace the one active identity in this config file",
+	Long: `Replace the one active identity stored in this config file
+(.ravi/config.json in CWD if it exists, otherwise ~/.ravi/config.json).
+
+This is not a multi-agent or multi-session switcher. Shared ~/.ravi/config.json
+cannot run multiple agents. Several agents on one host should call
+https://api.ravi.app with per-identity ravi_id_ keys, or use the Cursor MCP
+Connect card.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		target := args[0]
