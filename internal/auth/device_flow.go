@@ -3,6 +3,7 @@ package auth
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
@@ -19,6 +20,12 @@ import (
 const (
 	// DefaultSpinnerCharSet is the Braille spinner pattern (index 14 in yacspin).
 	DefaultSpinnerCharSet = 14
+
+	// PublicDeviceURL is the user-facing device-login page. The API currently
+	// returns https://api.ravi.app/api/auth/device/verify/ as verification_uri;
+	// that is an implementation path, not the public front door documented for
+	// humans and agents (https://ravi.id/device).
+	PublicDeviceURL = "https://ravi.id/device"
 )
 
 // DeviceFlow handles the device code authentication flow
@@ -51,17 +58,19 @@ func (d *DeviceFlow) Run() error {
 		return fmt.Errorf("failed to request device code: %w", err)
 	}
 
+	verifyURL := deviceVerifyURL(codeResp.VerificationURI, codeResp.UserCode)
+
 	// Display instructions
 	fmt.Println()
 	fmt.Println("To authenticate, visit:")
-	fmt.Printf("  %s\n", codeResp.VerificationURI)
+	fmt.Printf("  %s\n", verifyURL)
 	fmt.Println()
 	fmt.Println("And enter the code:")
 	fmt.Printf("  %s\n", codeResp.UserCode)
 	fmt.Println()
 
 	// Try to open browser
-	if err := OpenBrowser(codeResp.VerificationURI + "?user_code=" + codeResp.UserCode); err != nil {
+	if err := OpenBrowser(verifyURL); err != nil {
 		// Not a fatal error, user can manually visit URL
 		fmt.Println("(Could not open browser automatically)")
 	}
@@ -267,6 +276,62 @@ func identityLabel(id api.Identity) string {
 		return fmt.Sprintf("%s (%s)", id.Name, detail)
 	}
 	return id.Name
+}
+
+// deviceVerifyURL returns the URL printed and opened during device login.
+// Production API hosts are rewritten to PublicDeviceURL so agents and humans
+// see the documented front door instead of /api/auth/device/verify/. Local
+// and custom API hosts keep their origin and map the API verify path to /device.
+func deviceVerifyURL(apiVerificationURI, userCode string) string {
+	base := PublicDeviceURL
+
+	parsed, err := url.Parse(apiVerificationURI)
+	if err == nil && parsed.Host != "" {
+		switch {
+		case isHostedAPIHost(parsed.Hostname()):
+			base = PublicDeviceURL
+		case isAPIDeviceVerifyPath(parsed.Path):
+			parsed.Path = "/device"
+			parsed.RawQuery = ""
+			parsed.Fragment = ""
+			base = parsed.String()
+		default:
+			parsed.RawQuery = ""
+			parsed.Fragment = ""
+			base = parsed.String()
+		}
+	}
+
+	return withUserCode(base, userCode)
+}
+
+func isHostedAPIHost(host string) bool {
+	switch strings.ToLower(host) {
+	case "api.ravi.app", "ravi.app", "www.ravi.app", "ravi.id", "www.ravi.id":
+		return true
+	default:
+		return false
+	}
+}
+
+func isAPIDeviceVerifyPath(path string) bool {
+	return strings.TrimSuffix(path, "/") == strings.TrimSuffix(api.PathDeviceVerify, "/")
+}
+
+func withUserCode(base, userCode string) string {
+	u, err := url.Parse(base)
+	if err != nil || u.Scheme == "" {
+		u, err = url.Parse(PublicDeviceURL)
+		if err != nil {
+			return PublicDeviceURL
+		}
+	}
+	q := u.Query()
+	if userCode != "" {
+		q.Set("user_code", userCode)
+	}
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 // OpenBrowser opens the default browser to the given URL.

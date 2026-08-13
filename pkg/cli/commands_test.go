@@ -1,13 +1,16 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -1072,6 +1075,14 @@ func TestRootCmd_SubcommandRegistration(t *testing.T) {
 // --- Auth commands ---
 
 func TestLoginCmd(t *testing.T) {
+	var openedURL string
+	origBrowser := auth.OpenBrowser
+	auth.OpenBrowser = func(url string) error {
+		openedURL = url
+		return nil
+	}
+	defer func() { auth.OpenBrowser = origBrowser }()
+
 	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -1079,7 +1090,7 @@ func TestLoginCmd(t *testing.T) {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"device_code":      "test-device-code",
 				"user_code":        "TEST-1234",
-				"verification_uri": "http://127.0.0.1:0/verify",
+				"verification_uri": "https://api.ravi.app/api/auth/device/verify/",
 				"expires_in":       300,
 				"interval":         0,
 			})
@@ -1097,9 +1108,32 @@ func TestLoginCmd(t *testing.T) {
 	_ = server
 	defer cleanup()
 
-	err := loginCmd.RunE(loginCmd, nil)
+	r, w, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("loginCmd.RunE() error = %v", err)
+		t.Fatalf("pipe: %v", err)
+	}
+	origStdout := os.Stdout
+	os.Stdout = w
+	runErr := loginCmd.RunE(loginCmd, nil)
+	_ = w.Close()
+	os.Stdout = origStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	out := buf.String()
+
+	if runErr != nil {
+		t.Fatalf("loginCmd.RunE() error = %v", runErr)
+	}
+
+	wantURL := "https://ravi.id/device?user_code=TEST-1234"
+	if !strings.Contains(out, wantURL) {
+		t.Errorf("loginCmd stdout missing public device URL %q, got:\n%s", wantURL, out)
+	}
+	if strings.Contains(out, "/api/auth/device/verify") {
+		t.Errorf("loginCmd stdout still prints API verify path, got:\n%s", out)
+	}
+	if openedURL != wantURL {
+		t.Errorf("OpenBrowser URL = %q, want %q", openedURL, wantURL)
 	}
 }
 

@@ -17,7 +17,7 @@ Verify you're authenticated before using any command:
 ravi auth status
 ```
 
-If `"authenticated": false`, tell the user to run `ravi auth login` (requires browser interaction — you cannot do this yourself).
+If `"authenticated": false`, tell the user to run `ravi auth login` (requires browser interaction — you cannot do this yourself). They should open https://ravi.id/device and enter the code the CLI prints.
 
 ## Your Identity
 

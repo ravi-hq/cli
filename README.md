@@ -86,7 +86,7 @@ See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
    ravi auth login
    ```
 
-   This opens your browser for OAuth authentication.
+   Open https://ravi.id/device and enter the code the CLI prints (it also tries to open your browser).
 
 2. **Check your inbox:**
 

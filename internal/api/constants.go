@@ -4,6 +4,7 @@ const (
 	// API endpoint paths
 	PathDeviceCode    = "/api/auth/device/"
 	PathDeviceToken   = "/api/auth/device/token/"
+	PathDeviceVerify  = "/api/auth/device/verify/"
 	PathEmailInbox    = "/api/email-inbox/"
 	PathSMSInbox      = "/api/sms-inbox/"
 	PathPhone         = "/api/phone/"

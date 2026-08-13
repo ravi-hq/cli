@@ -44,6 +44,8 @@ claude plugin install ravi@ravi
 ravi auth login
 ```
 
+Open https://ravi.id/device and enter the code the CLI prints.
+
 After these steps, any Claude Code session will know how to
 use `ravi`.
 
