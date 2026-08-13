@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // ListIdentities returns all identities for the authenticated user.
@@ -12,6 +13,22 @@ func (c *Client) ListIdentities() ([]Identity, error) {
 		return nil, err
 	}
 	return identities, nil
+}
+
+// GetIdentity fetches one identity by UUID (GET /api/identities/<uuid>/).
+func (c *Client) GetIdentity(uuid string) (*Identity, error) {
+	if uuid == "" {
+		return nil, fmt.Errorf("identity uuid is required")
+	}
+	var identity Identity
+	if err := c.doAuthenticatedRequest(http.MethodGet, identityPath(uuid), nil, &identity); err != nil {
+		return nil, err
+	}
+	return &identity, nil
+}
+
+func identityPath(uuid string) string {
+	return PathIdentities + url.PathEscape(uuid) + "/"
 }
 
 // CreateIdentity creates a new identity with the given name and optional email

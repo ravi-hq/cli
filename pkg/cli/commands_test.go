@@ -87,28 +87,33 @@ func TestGetPhoneCmd(t *testing.T) {
 	}
 }
 
-// TestGetPhoneCmd_IdentityFlag verifies `ravi get phone --identity` sends
-// ?identity=<uuid> on GET /api/phone/ and displays that identity's number,
-// not another identity's number from an unscoped list.
+// TestGetPhoneCmd_IdentityFlag verifies `ravi get phone --identity` uses the
+// phone on GET /api/identities/<id>/, not the first row of GET /api/phone/
+// (which currently ignores ?identity= and always starts with Personal).
 func TestGetPhoneCmd_IdentityFlag(t *testing.T) {
 	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
-	var gotIdentity string
-	var gotPath string
+	var gotIdentityPath string
+	var phoneListHits int
 
 	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		gotPath = r.URL.Path
-		gotIdentity = r.URL.Query().Get("identity")
-		if r.URL.Path != api.PathPhone {
+		switch r.URL.Path {
+		case api.PathPhone:
+			phoneListHits++
+			json.NewEncoder(w).Encode([]api.Phone{
+				{ID: 8, PhoneNumber: "+15632929067"},
+				{ID: 9, PhoneNumber: "+15732572098"},
+			})
+		case api.PathIdentities + wantUUID + "/":
+			gotIdentityPath = r.URL.Path
+			json.NewEncoder(w).Encode(api.Identity{
+				UUID:  wantUUID,
+				Name:  "Growth",
+				Phone: "+15732572098",
+			})
+		default:
 			w.WriteHeader(http.StatusOK)
-			return
 		}
-		// Unscoped list would return the other identity's number first.
-		if gotIdentity == wantUUID {
-			json.NewEncoder(w).Encode([]api.Phone{{ID: 2, PhoneNumber: "+15732572098"}})
-			return
-		}
-		json.NewEncoder(w).Encode([]api.Phone{{ID: 1, PhoneNumber: "+15632929067"}})
 	}))
 	_ = server
 	defer cleanup()
@@ -116,14 +121,33 @@ func TestGetPhoneCmd_IdentityFlag(t *testing.T) {
 	identityFlag = wantUUID
 	defer func() { identityFlag = "" }()
 
-	if err := getPhoneCmd.RunE(getPhoneCmd, nil); err != nil {
-		t.Fatalf("getPhoneCmd.RunE() error = %v", err)
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
 	}
-	if gotPath != api.PathPhone {
-		t.Errorf("path = %q, want %q", gotPath, api.PathPhone)
+	origStdout := os.Stdout
+	os.Stdout = w
+	runErr := getPhoneCmd.RunE(getPhoneCmd, nil)
+	_ = w.Close()
+	os.Stdout = origStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	out := buf.String()
+
+	if runErr != nil {
+		t.Fatalf("getPhoneCmd.RunE() error = %v", runErr)
 	}
-	if gotIdentity != wantUUID {
-		t.Errorf("identity param = %q, want %q (CLI dropped --identity on phone GET)", gotIdentity, wantUUID)
+	if gotIdentityPath != api.PathIdentities+wantUUID+"/" {
+		t.Errorf("identity GET path = %q, want %s%s/", gotIdentityPath, api.PathIdentities, wantUUID)
+	}
+	if phoneListHits != 0 {
+		t.Errorf("GET /api/phone/ hits = %d, want 0", phoneListHits)
+	}
+	if !strings.Contains(out, "+15732572098") {
+		t.Errorf("stdout missing identity phone, got:\n%s", out)
+	}
+	if strings.Contains(out, "+15632929067") {
+		t.Errorf("stdout leaked account-list first row +15632929067, got:\n%s", out)
 	}
 }
 
@@ -131,16 +155,19 @@ func TestGetPhoneCmd_IdentityFlag(t *testing.T) {
 // `ravi get phone --identity <uuid>` is parsed the same way a user types it.
 func TestGetPhoneCmd_IdentityFlagParsedFromArgs(t *testing.T) {
 	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
-	var gotIdentity string
+	var gotIdentityPath string
 
 	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == api.PathPhone {
-			gotIdentity = r.URL.Query().Get("identity")
-			json.NewEncoder(w).Encode([]api.Phone{{ID: 2, PhoneNumber: "+15732572098"}})
-			return
+		switch r.URL.Path {
+		case api.PathPhone:
+			json.NewEncoder(w).Encode([]api.Phone{{ID: 8, PhoneNumber: "+15632929067"}})
+		case api.PathIdentities + wantUUID + "/":
+			gotIdentityPath = r.URL.Path
+			json.NewEncoder(w).Encode(api.Identity{UUID: wantUUID, Phone: "+15732572098"})
+		default:
+			w.WriteHeader(http.StatusOK)
 		}
-		w.WriteHeader(http.StatusOK)
 	}))
 	_ = server
 	defer cleanup()
@@ -149,12 +176,30 @@ func TestGetPhoneCmd_IdentityFlagParsedFromArgs(t *testing.T) {
 		rootCmd.SetArgs(nil)
 	}()
 
-	rootCmd.SetArgs([]string{"get", "phone", "--identity", wantUUID})
-	if err := Execute(); err != nil {
-		t.Fatalf("Execute() error = %v", err)
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
 	}
-	if gotIdentity != wantUUID {
-		t.Errorf("identity param = %q, want %q", gotIdentity, wantUUID)
+	origStdout := os.Stdout
+	os.Stdout = w
+	rootCmd.SetArgs([]string{"get", "phone", "--identity", wantUUID})
+	runErr := Execute()
+	_ = w.Close()
+	os.Stdout = origStdout
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	if runErr != nil {
+		t.Fatalf("Execute() error = %v", runErr)
+	}
+	if gotIdentityPath != api.PathIdentities+wantUUID+"/" {
+		t.Errorf("identity GET path = %q, want identities retrieve", gotIdentityPath)
+	}
+	if !strings.Contains(buf.String(), "+15732572098") {
+		t.Errorf("stdout missing identity phone, got:\n%s", buf.String())
+	}
+	if strings.Contains(buf.String(), "+15632929067") {
+		t.Errorf("stdout leaked first-row phone, got:\n%s", buf.String())
 	}
 }
 

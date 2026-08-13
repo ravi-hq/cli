@@ -36,6 +36,61 @@ func TestListIdentities_Success(t *testing.T) {
 	}
 }
 
+func TestGetIdentity_Success(t *testing.T) {
+	const uuid = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("Expected GET, got %s", r.Method)
+		}
+		wantPath := PathIdentities + uuid + "/"
+		if r.URL.Path != wantPath {
+			t.Errorf("path = %q, want %q", r.URL.Path, wantPath)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Identity{
+			UUID:  uuid,
+			Name:  "Growth",
+			Email: "growth@ravi.id",
+			Phone: "+15732572098",
+		})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	identity, err := client.GetIdentity(uuid)
+	if err != nil {
+		t.Fatalf("GetIdentity() error = %v", err)
+	}
+	if identity.Phone != "+15732572098" {
+		t.Errorf("Phone = %q, want +15732572098", identity.Phone)
+	}
+	if identity.Name != "Growth" {
+		t.Errorf("Name = %q, want Growth", identity.Name)
+	}
+}
+
+func TestGetIdentity_EmptyUUID(t *testing.T) {
+	client := newTestClient("http://127.0.0.1:0")
+	_, err := client.GetIdentity("")
+	if err == nil {
+		t.Fatal("GetIdentity(\"\") error = nil, want error")
+	}
+}
+
+func TestGetIdentity_Error(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(Error{Detail: "Not found"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	_, err := client.GetIdentity("missing")
+	if err == nil {
+		t.Fatal("GetIdentity() error = nil, want error")
+	}
+}
+
 func TestListIdentities_Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
