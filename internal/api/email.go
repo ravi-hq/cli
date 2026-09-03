@@ -9,11 +9,15 @@ import (
 	"strconv"
 )
 
-// GetInboxID fetches the user's email and returns its ID.
+// GetInboxID fetches the identity's email inbox numeric ID for compose/feedback.
+// A zero ID is an error — submitting inbox=0 would send from the wrong mailbox.
 func (c *Client) GetInboxID() (int, error) {
 	email, err := c.GetEmail()
 	if err != nil {
 		return 0, err
+	}
+	if email.ID == 0 {
+		return 0, fmt.Errorf("no inbox id assigned")
 	}
 	return email.ID, nil
 }
