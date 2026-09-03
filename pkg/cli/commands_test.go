@@ -285,10 +285,8 @@ func TestGetEmailCmd_IdentityFlag(t *testing.T) {
 		switch r.URL.Path {
 		case api.PathEmail:
 			emailListHits++
-			json.NewEncoder(w).Encode([]api.Email{
-				{ID: 1, Email: "cos@ravi.app"},
-				{ID: 99, Email: "kate@ravi.app"},
-			})
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(api.Error{Detail: "email list down"})
 		case api.PathIdentities + wantUUID + "/":
 			gotIdentityPath = r.URL.Path
 			json.NewEncoder(w).Encode(api.Identity{
@@ -314,8 +312,8 @@ func TestGetEmailCmd_IdentityFlag(t *testing.T) {
 	if gotIdentityPath != api.PathIdentities+wantUUID+"/" {
 		t.Errorf("identity GET path = %q, want %s%s/", gotIdentityPath, api.PathIdentities, wantUUID)
 	}
-	if emailListHits == 0 {
-		t.Error("GET /api/email/ hits = 0, want inbox-id resolve")
+	if emailListHits != 0 {
+		t.Errorf("GET /api/email/ hits = %d, want 0 for address-only get email", emailListHits)
 	}
 	if usedIdentityKey {
 		t.Error("used identity-scoped key; --identity must use the management key")

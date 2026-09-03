@@ -73,19 +73,9 @@ func (c *Client) emailFromIdentity(uuid string) (*Email, error) {
 	if ident.Email == "" {
 		return nil, fmt.Errorf("no email address assigned")
 	}
-
-	// Identity retrieve has the address but not the numeric inbox id that
-	// compose/feedback pass as ?inbox=. Match the address on GET /api/email/
-	// (which may ignore ?identity= and return the account list).
-	var result []Email
-	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathEmail, nil), nil, &result); err != nil {
-		return nil, err
-	}
-	for i := range result {
-		if result[i].Email == ident.Email {
-			return &result[i], nil
-		}
-	}
+	// Address only. The numeric inbox id lives on GET /api/email/ and is
+	// resolved by GetInboxID for compose/feedback — a list failure must
+	// not hide a known address from `ravi get email --identity`.
 	return &Email{Email: ident.Email}, nil
 }
 
