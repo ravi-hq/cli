@@ -146,15 +146,14 @@ func TestGetEmail_Success(t *testing.T) {
 
 func TestGetEmail_ScopedByIdentity(t *testing.T) {
 	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	var emailListHits int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case PathEmail:
-			// Account list starts with the bound mailbox. Match by address.
-			json.NewEncoder(w).Encode([]Email{
-				{ID: 1, Email: "cos@ravi.app"},
-				{ID: 99, Email: "kate@ravi.app"},
-			})
+			emailListHits++
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Error{Detail: "email list down"})
 		case PathIdentities + wantUUID + "/":
 			json.NewEncoder(w).Encode(Identity{
 				UUID:  wantUUID,
@@ -171,13 +170,13 @@ func TestGetEmail_ScopedByIdentity(t *testing.T) {
 	client := newTestClient(server.URL).WithIdentity(wantUUID)
 	email, err := client.GetEmail()
 	if err != nil {
-		t.Fatalf("GetEmail() error = %v", err)
+		t.Fatalf("GetEmail() error = %v (address lookup must not depend on GET /api/email/)", err)
 	}
 	if email.Email != "kate@ravi.app" {
 		t.Errorf("Email = %q, want kate@ravi.app (identity address, not email-list first row)", email.Email)
 	}
-	if email.ID != 99 {
-		t.Errorf("ID = %d, want 99 (inbox id for compose/feedback)", email.ID)
+	if emailListHits != 0 {
+		t.Errorf("GET /api/email/ hits = %d, want 0 for address-only get email", emailListHits)
 	}
 }
 

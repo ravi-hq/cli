@@ -249,6 +249,29 @@ func TestGetInboxID_ScopedByIdentity(t *testing.T) {
 	}
 }
 
+func TestGetInboxID_ScopedListError(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case PathIdentities + wantUUID + "/":
+			json.NewEncoder(w).Encode(Identity{UUID: wantUUID, Name: "Kate", Email: "kate@ravi.app"})
+		case PathEmail:
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Error{Detail: "email list down"})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	_, err := client.GetInboxID()
+	if err == nil {
+		t.Fatal("GetInboxID() error = nil, want error when inbox-id list fails")
+	}
+}
+
 func TestGetInboxID_ScopedMissingID(t *testing.T) {
 	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

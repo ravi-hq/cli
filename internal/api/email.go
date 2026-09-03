@@ -16,10 +16,26 @@ func (c *Client) GetInboxID() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if email.ID == 0 {
+	if email.ID != 0 {
+		return email.ID, nil
+	}
+	return c.inboxIDForAddress(email.Email)
+}
+
+func (c *Client) inboxIDForAddress(address string) (int, error) {
+	if address == "" {
 		return 0, fmt.Errorf("no inbox id assigned")
 	}
-	return email.ID, nil
+	var result []Email
+	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathEmail, nil), nil, &result); err != nil {
+		return 0, err
+	}
+	for i := range result {
+		if result[i].Email == address && result[i].ID != 0 {
+			return result[i].ID, nil
+		}
+	}
+	return 0, fmt.Errorf("no inbox id assigned")
 }
 
 // PresignAttachment requests a presigned PUT URL for uploading an attachment.
