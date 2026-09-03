@@ -285,7 +285,10 @@ func TestGetEmailCmd_IdentityFlag(t *testing.T) {
 		switch r.URL.Path {
 		case api.PathEmail:
 			emailListHits++
-			json.NewEncoder(w).Encode([]api.Email{})
+			json.NewEncoder(w).Encode([]api.Email{
+				{ID: 1, Email: "cos@ravi.app"},
+				{ID: 99, Email: "kate@ravi.app"},
+			})
 		case api.PathIdentities + wantUUID + "/":
 			gotIdentityPath = r.URL.Path
 			json.NewEncoder(w).Encode(api.Identity{
@@ -311,8 +314,8 @@ func TestGetEmailCmd_IdentityFlag(t *testing.T) {
 	if gotIdentityPath != api.PathIdentities+wantUUID+"/" {
 		t.Errorf("identity GET path = %q, want %s%s/", gotIdentityPath, api.PathIdentities, wantUUID)
 	}
-	if emailListHits != 0 {
-		t.Errorf("GET /api/email/ hits = %d, want 0", emailListHits)
+	if emailListHits == 0 {
+		t.Error("GET /api/email/ hits = 0, want inbox-id resolve")
 	}
 	if usedIdentityKey {
 		t.Error("used identity-scoped key; --identity must use the management key")
@@ -2194,6 +2197,51 @@ func TestComposeCmd_ComposeError(t *testing.T) {
 	if err == nil {
 		t.Fatal("composeCmd.RunE() expected error, got nil")
 	}
+}
+
+func TestComposeCmd_IdentityFlagUsesInboxID(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	var gotInbox string
+
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case api.PathIdentities + wantUUID + "/":
+			json.NewEncoder(w).Encode(api.Identity{UUID: wantUUID, Name: "Kate", Email: "kate@ravi.app"})
+		case api.PathEmail:
+			json.NewEncoder(w).Encode([]api.Email{
+				{ID: 1, Email: "cos@ravi.app"},
+				{ID: 99, Email: "kate@ravi.app"},
+			})
+		case api.PathEmailCompose:
+			gotInbox = r.URL.Query().Get("inbox")
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(api.EmailMessageDetail{ID: 7, Subject: "Hi"})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer cleanup()
+
+	identityFlag = wantUUID
+	defer func() { identityFlag = "" }()
+	if err := composeCmd.Flags().Set("to", "a@b.com"); err != nil {
+		t.Fatalf("set to: %v", err)
+	}
+	if err := composeCmd.Flags().Set("subject", "Hi"); err != nil {
+		t.Fatalf("set subject: %v", err)
+	}
+	if err := composeCmd.Flags().Set("body", "<p>x</p>"); err != nil {
+		t.Fatalf("set body: %v", err)
+	}
+
+	if err := composeCmd.RunE(composeCmd, nil); err != nil {
+		t.Fatalf("composeCmd.RunE() error = %v", err)
+	}
+	if gotInbox != "99" {
+		t.Errorf("compose inbox = %q, want 99 (not 0 or bound mailbox 1)", gotInbox)
+	}
+	assertBoundIdentityUnchanged(t)
 }
 
 // --- Feedback compose error ---

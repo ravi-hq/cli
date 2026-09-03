@@ -216,6 +216,64 @@ func TestGetInboxID(t *testing.T) {
 	}
 }
 
+func TestGetInboxID_ScopedByIdentity(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	var composeUnsafe bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case PathIdentities + wantUUID + "/":
+			json.NewEncoder(w).Encode(Identity{UUID: wantUUID, Name: "Kate", Email: "kate@ravi.app"})
+		case PathEmail:
+			json.NewEncoder(w).Encode([]Email{
+				{ID: 1, Email: "cos@ravi.app"},
+				{ID: 99, Email: "kate@ravi.app"},
+			})
+		default:
+			composeUnsafe = true
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	id, err := client.GetInboxID()
+	if err != nil {
+		t.Fatalf("GetInboxID() error = %v", err)
+	}
+	if id != 99 {
+		t.Errorf("GetInboxID() = %d, want 99 (Kate), not 0 or bound-mailbox 1", id)
+	}
+	if composeUnsafe {
+		t.Error("unexpected extra request while resolving inbox id")
+	}
+}
+
+func TestGetInboxID_ScopedMissingID(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case PathIdentities + wantUUID + "/":
+			json.NewEncoder(w).Encode(Identity{UUID: wantUUID, Name: "Kate", Email: "kate@ravi.app"})
+		case PathEmail:
+			json.NewEncoder(w).Encode([]Email{{ID: 1, Email: "cos@ravi.app"}})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	id, err := client.GetInboxID()
+	if err == nil {
+		t.Fatalf("GetInboxID() = %d, want error instead of inbox=0", id)
+	}
+	if !strings.Contains(err.Error(), "inbox id") {
+		t.Errorf("error = %q, want to mention inbox id", err.Error())
+	}
+}
+
 func TestGetInboxID_Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
