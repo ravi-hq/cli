@@ -145,21 +145,56 @@ func TestGetEmail_Success(t *testing.T) {
 }
 
 func TestGetEmail_ScopedByIdentity(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	var emailListHits int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.URL.Query().Get("identity"); got != "id-uuid-2" {
-			t.Errorf("identity param = %q, want id-uuid-2", got)
-		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode([]Email{
-			{ID: 42, Email: "user@ravi.id"},
-		})
+		switch r.URL.Path {
+		case PathEmail:
+			emailListHits++
+			// Unfiltered / identity-key-fenced list: empty or the bound mailbox.
+			json.NewEncoder(w).Encode([]Email{})
+		case PathIdentities + wantUUID + "/":
+			json.NewEncoder(w).Encode(Identity{
+				UUID:  wantUUID,
+				Name:  "Kate",
+				Email: "kate@ravi.app",
+			})
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}))
 	defer server.Close()
 
-	client := newTestClient(server.URL).WithIdentity("id-uuid-2")
-	_, err := client.GetEmail()
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	email, err := client.GetEmail()
 	if err != nil {
 		t.Fatalf("GetEmail() error = %v", err)
+	}
+	if email.Email != "kate@ravi.app" {
+		t.Errorf("Email = %q, want kate@ravi.app (identity object, not email-list first row)", email.Email)
+	}
+	if emailListHits != 0 {
+		t.Errorf("GET /api/email/ hits = %d, want 0 when identity is scoped", emailListHits)
+	}
+}
+
+func TestGetEmail_IdentityMissingEmail(t *testing.T) {
+	const wantUUID = "id-no-email"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Identity{UUID: wantUUID, Name: "Bare"})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	_, err := client.GetEmail()
+	if err == nil {
+		t.Fatal("GetEmail() error = nil, want error for empty identity email")
+	}
+	if !strings.Contains(err.Error(), "no email address") {
+		t.Errorf("Error = %q, want to contain 'no email address'", err.Error())
 	}
 }
 

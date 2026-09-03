@@ -11,7 +11,7 @@ The CLI holds **one active identity per machine / config file** (`~/.ravi/config
 
 - **Cursor:** use the MCP Connect card (per-agent credentials), not `ravi auth login`.
 - **Several agents on one host:** call https://api.ravi.app with per-identity `ravi_id_` keys (`Authorization: Bearer ravi_id_...`).
-- `--identity` scopes a single request so it does not leak another identity's resources (for example `ravi get phone --identity`). It does not change the machine's active identity.
+- `--identity` scopes a single request so it does not leak another identity's resources (inbox, get email/phone, auth status, contacts, passwords, secrets, calls, messages). It does not change the machine's active identity — do not run `ravi identity use` for a one-shot inbox read.
 
 ## Prerequisites
 

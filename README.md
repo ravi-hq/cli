@@ -205,7 +205,7 @@ An identity has an **email** channel and a **phone** channel.
 | Flag | Description |
 |------|-------------|
 | `--human` | Output in human-readable format (default is JSON) |
-| `--identity <uuid>` | Scope a single request (get, inbox, contacts, passwords, secrets, calls, events, messages) so it does not leak another identity's resources. Does not change the machine's active identity and is not how you run multiple agents. |
+| `--identity <uuid>` | Scope a single request (get, inbox, auth status, contacts, passwords, secrets, calls, events, messages) so it does not leak another identity's resources. Does not change the machine's active identity and is not how you run multiple agents. |
 | `--help` | Show help for any command |
 | `--version` | Show version information |
 

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/ravi-hq/cli/internal/api"
 	"github.com/ravi-hq/cli/internal/output"
 	"github.com/ravi-hq/cli/internal/version"
@@ -16,12 +18,24 @@ var (
 	identityFlag string
 )
 
-// newClient builds an identity-scoped API client, applying the global
-// --identity flag as the ?identity=<uuid> filter when set.
+// newClient builds an API client for resource commands (get, inbox, contacts,
+// passwords, secrets, calls, messages).
+//
+// Without --identity, the identity key is used (fenced to the bound identity
+// in ~/.ravi/config.json). With --identity, the management key is used plus
+// ?identity=<uuid> so a one-shot override can read that identity's inbox and
+// channels. Identity keys cannot see another identity's mailbox; using them
+// here returns a silent empty list or "no email address assigned".
 func newClient() (*api.Client, error) {
-	client, err := api.NewClient()
+	if identityFlag == "" {
+		return api.NewClient()
+	}
+	client, err := api.NewManagementClient()
 	if err != nil {
 		return nil, err
+	}
+	if !client.IsAuthenticated() {
+		return nil, fmt.Errorf("--identity requires a management key; an identity-scoped key cannot read another identity's inbox")
 	}
 	return client.WithIdentity(identityFlag), nil
 }
@@ -86,7 +100,7 @@ func Execute() error {
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&humanOutput, "human", false, "Output in human-readable format")
-	rootCmd.PersistentFlags().StringVar(&identityFlag, "identity", "", "Scope a single request to one identity (does not change the machine's active identity; not a multi-agent switcher)")
+	rootCmd.PersistentFlags().StringVar(&identityFlag, "identity", "", "Scope a single request to one identity's inbox, channels, and vault (does not change the machine's active identity)")
 
 	// Add version command
 	rootCmd.AddCommand(&cobra.Command{

@@ -68,7 +68,75 @@ func setupCLITest(t *testing.T, handler http.Handler) (server *httptest.Server, 
 	}
 }
 
+// captureStdout runs fn while redirecting os.Stdout, returning the printed text.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	origStdout := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = origStdout }()
+	fn()
+	_ = w.Close()
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	return buf.String()
+}
+
+// assertBoundIdentityUnchanged checks that --identity did not rewrite the
+// machine default stored by setupCLITest.
+func assertBoundIdentityUnchanged(t *testing.T) {
+	t.Helper()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.IdentityUUID != "test-uuid" {
+		t.Errorf("IdentityUUID = %q, want test-uuid (--identity must not change the default)", cfg.IdentityUUID)
+	}
+	if cfg.IdentityName != "Test" {
+		t.Errorf("IdentityName = %q, want Test", cfg.IdentityName)
+	}
+	if cfg.IdentityKey != "ravi_id_test" {
+		t.Errorf("IdentityKey = %q, want ravi_id_test", cfg.IdentityKey)
+	}
+}
+
 // --- Get commands ---
+
+func TestNewClient_IdentityFlagRequiresManagementKey(t *testing.T) {
+	tmpDir, cleanupHome := withTempHome(t)
+	cleanupURL := withAPIBaseURL(t, "http://localhost")
+	defer func() {
+		cleanupURL()
+		cleanupHome()
+		identityFlag = ""
+	}()
+
+	raviDir := filepath.Join(tmpDir, ".ravi")
+	if err := os.MkdirAll(raviDir, 0700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	cfg := config.Config{IdentityKey: "ravi_id_only", IdentityUUID: "test-uuid", IdentityName: "Test"}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(raviDir, "config.json"), data, 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	identityFlag = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	_, err = newClient()
+	if err == nil {
+		t.Fatal("newClient() error = nil, want loud failure when --identity has no management key")
+	}
+	if !strings.Contains(err.Error(), "management key") {
+		t.Errorf("error = %q, want to mention management key", err.Error())
+	}
+}
 
 func TestGetPhoneCmd(t *testing.T) {
 	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -204,13 +272,30 @@ func TestGetPhoneCmd_IdentityFlagParsedFromArgs(t *testing.T) {
 }
 
 func TestGetEmailCmd_IdentityFlag(t *testing.T) {
-	const wantUUID = "fa078e1f-b1fa-46fd-8ae1-8498be2b1042"
-	var gotIdentity string
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	var gotIdentityPath string
+	var emailListHits int
+	var usedIdentityKey bool
 
 	server, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		gotIdentity = r.URL.Query().Get("identity")
-		json.NewEncoder(w).Encode([]api.Email{{ID: 1, Email: "growth@ravi.id"}})
+		if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ravi_id_") {
+			usedIdentityKey = true
+		}
+		switch r.URL.Path {
+		case api.PathEmail:
+			emailListHits++
+			json.NewEncoder(w).Encode([]api.Email{})
+		case api.PathIdentities + wantUUID + "/":
+			gotIdentityPath = r.URL.Path
+			json.NewEncoder(w).Encode(api.Identity{
+				UUID:  wantUUID,
+				Name:  "Kate",
+				Email: "kate@ravi.app",
+			})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
 	}))
 	_ = server
 	defer cleanup()
@@ -218,12 +303,24 @@ func TestGetEmailCmd_IdentityFlag(t *testing.T) {
 	identityFlag = wantUUID
 	defer func() { identityFlag = "" }()
 
-	if err := getEmailCmd.RunE(getEmailCmd, nil); err != nil {
-		t.Fatalf("getEmailCmd.RunE() error = %v", err)
+	out := captureStdout(t, func() {
+		if err := getEmailCmd.RunE(getEmailCmd, nil); err != nil {
+			t.Fatalf("getEmailCmd.RunE() error = %v", err)
+		}
+	})
+	if gotIdentityPath != api.PathIdentities+wantUUID+"/" {
+		t.Errorf("identity GET path = %q, want %s%s/", gotIdentityPath, api.PathIdentities, wantUUID)
 	}
-	if gotIdentity != wantUUID {
-		t.Errorf("identity param = %q, want %q", gotIdentity, wantUUID)
+	if emailListHits != 0 {
+		t.Errorf("GET /api/email/ hits = %d, want 0", emailListHits)
 	}
+	if usedIdentityKey {
+		t.Error("used identity-scoped key; --identity must use the management key")
+	}
+	if !strings.Contains(out, "kate@ravi.app") {
+		t.Errorf("stdout missing identity email, got:\n%s", out)
+	}
+	assertBoundIdentityUnchanged(t)
 }
 
 func TestGetEmailCmd(t *testing.T) {
@@ -1300,6 +1397,45 @@ func TestStatusCmd_Authenticated(t *testing.T) {
 	}
 }
 
+func TestStatusCmd_IdentityFlag(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	var gotIdentityPath string
+
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == api.PathIdentities+wantUUID+"/" {
+			gotIdentityPath = r.URL.Path
+			json.NewEncoder(w).Encode(api.Identity{UUID: wantUUID, Name: "Kate", Email: "kate@ravi.app"})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(api.Error{Detail: "Not found"})
+	}))
+	defer cleanup()
+
+	identityFlag = wantUUID
+	defer func() { identityFlag = "" }()
+
+	out := captureStdout(t, func() {
+		if err := statusCmd.RunE(statusCmd, nil); err != nil {
+			t.Fatalf("statusCmd.RunE() error = %v", err)
+		}
+	})
+	if gotIdentityPath != api.PathIdentities+wantUUID+"/" {
+		t.Errorf("identity GET path = %q, want identities retrieve", gotIdentityPath)
+	}
+	if !strings.Contains(out, "Kate") {
+		t.Errorf("auth status missing targeted identity name, got:\n%s", out)
+	}
+	if !strings.Contains(out, wantUUID) {
+		t.Errorf("auth status missing targeted identity uuid, got:\n%s", out)
+	}
+	if strings.Contains(out, `"identity": "Test"`) || strings.Contains(out, "test-uuid") {
+		t.Errorf("auth status still named the bound identity, got:\n%s", out)
+	}
+	assertBoundIdentityUnchanged(t)
+}
+
 func TestStatusCmd_NotAuthenticated(t *testing.T) {
 	tmpDir, cleanupHome := withTempHome(t)
 	cleanupURL := withAPIBaseURL(t, "http://localhost")
@@ -1340,6 +1476,153 @@ func TestEmailCmd_ListThreads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("emailCmd.RunE(nil) error = %v", err)
 	}
+}
+
+// TestEmailCmd_IdentityFlag is the Kate repro: bound identity is empty,
+// --identity must list the targeted mailbox. Returning [] means the flag
+// was ignored or the identity-scoped key was used.
+func TestEmailCmd_IdentityFlag(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	var gotIdentity string
+	var usedIdentityKey bool
+
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ravi_id_") {
+			usedIdentityKey = true
+		}
+		gotIdentity = r.URL.Query().Get("identity")
+		if r.URL.Path != api.PathEmailInbox || gotIdentity != wantUUID ||
+			r.Header.Get("Authorization") != "Bearer ravi_mgmt_test" {
+			// Bound mailbox is empty — the silent-failure case.
+			json.NewEncoder(w).Encode([]api.EmailThread{})
+			return
+		}
+		json.NewEncoder(w).Encode([]api.EmailThread{
+			{
+				ThreadID:        "kate-thread",
+				Subject:         "Kate mail",
+				FromEmail:       "sender@example.com",
+				Email:           "kate@ravi.app",
+				MessageCount:    1,
+				LatestMessageDt: time.Now(),
+			},
+		})
+	}))
+	defer cleanup()
+
+	identityFlag = wantUUID
+	humanOutput = false
+	defer func() { identityFlag = ""; humanOutput = false }()
+
+	out := captureStdout(t, func() {
+		if err := emailCmd.RunE(emailCmd, nil); err != nil {
+			t.Fatalf("emailCmd.RunE() error = %v", err)
+		}
+	})
+	if gotIdentity != wantUUID {
+		t.Errorf("identity param = %q, want %q", gotIdentity, wantUUID)
+	}
+	if usedIdentityKey {
+		t.Error("used identity-scoped key; --identity must use the management key")
+	}
+	if !strings.Contains(out, "kate-thread") {
+		t.Errorf("inbox missing targeted identity thread (empty [] means the flag was ignored), got:\n%s", out)
+	}
+	assertBoundIdentityUnchanged(t)
+}
+
+func TestEmailCmd_IdentityFlagParsedFromArgs(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path != api.PathEmailInbox || r.URL.Query().Get("identity") != wantUUID ||
+			r.Header.Get("Authorization") != "Bearer ravi_mgmt_test" {
+			json.NewEncoder(w).Encode([]api.EmailThread{})
+			return
+		}
+		json.NewEncoder(w).Encode([]api.EmailThread{
+			{ThreadID: "kate-thread", Subject: "Kate mail", LatestMessageDt: time.Now()},
+		})
+	}))
+	defer cleanup()
+	defer func() {
+		identityFlag = ""
+		rootCmd.SetArgs(nil)
+	}()
+
+	out := captureStdout(t, func() {
+		rootCmd.SetArgs([]string{"--identity", wantUUID, "inbox", "email"})
+		if err := Execute(); err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+	})
+	if !strings.Contains(out, "kate-thread") {
+		t.Errorf("inbox missing targeted identity thread, got:\n%s", out)
+	}
+	assertBoundIdentityUnchanged(t)
+}
+
+func TestGetEmailCmd_IdentityFlagParsedFromArgs(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case api.PathEmail:
+			json.NewEncoder(w).Encode([]api.Email{})
+		case api.PathIdentities + wantUUID + "/":
+			json.NewEncoder(w).Encode(api.Identity{UUID: wantUUID, Name: "Kate", Email: "kate@ravi.app"})
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer cleanup()
+	defer func() {
+		identityFlag = ""
+		rootCmd.SetArgs(nil)
+	}()
+
+	out := captureStdout(t, func() {
+		rootCmd.SetArgs([]string{"--identity", wantUUID, "get", "email"})
+		if err := Execute(); err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+	})
+	if !strings.Contains(out, "kate@ravi.app") {
+		t.Errorf("stdout missing identity email, got:\n%s", out)
+	}
+	assertBoundIdentityUnchanged(t)
+}
+
+func TestStatusCmd_IdentityFlagParsedFromArgs(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+
+	_, cleanup := setupCLITest(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == api.PathIdentities+wantUUID+"/" {
+			json.NewEncoder(w).Encode(api.Identity{UUID: wantUUID, Name: "Kate"})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer cleanup()
+	defer func() {
+		identityFlag = ""
+		rootCmd.SetArgs(nil)
+	}()
+
+	out := captureStdout(t, func() {
+		rootCmd.SetArgs([]string{"--identity", wantUUID, "auth", "status"})
+		if err := Execute(); err != nil {
+			t.Fatalf("Execute() error = %v", err)
+		}
+	})
+	if !strings.Contains(out, "Kate") || !strings.Contains(out, wantUUID) {
+		t.Errorf("auth status missing targeted identity, got:\n%s", out)
+	}
+	assertBoundIdentityUnchanged(t)
 }
 
 func TestEmailCmd_ShowThread(t *testing.T) {
