@@ -63,7 +63,20 @@ var statusCmd = &cobra.Command{
 			if cfg.UserEmail != "" {
 				result["email"] = cfg.UserEmail
 			}
-			if cfg.IdentityUUID != "" {
+			if identityFlag != "" {
+				// Per-command override: name the targeted identity without
+				// rewriting the machine's default in ~/.ravi/config.json.
+				client, err := newManagementClient()
+				if err != nil {
+					return err
+				}
+				ident, err := client.GetIdentity(identityFlag)
+				if err != nil {
+					return fmt.Errorf("resolving --identity %s: %w", identityFlag, err)
+				}
+				result["identity"] = ident.Name
+				result["identity_uuid"] = ident.UUID
+			} else if cfg.IdentityUUID != "" {
 				result["identity"] = cfg.IdentityName
 				result["identity_uuid"] = cfg.IdentityUUID
 			}

@@ -29,7 +29,7 @@ func TestListEmailThreads_Success(t *testing.T) {
 				Subject:         "First thread subject",
 				Preview:         "Preview of first email...",
 				FromEmail:       "alice@example.com",
-				Email:     "user@ravi.id",
+				Email:           "user@ravi.id",
 				MessageCount:    3,
 				UnreadCount:     1,
 				LatestMessageDt: time.Date(2024, 1, 15, 14, 30, 0, 0, time.UTC),
@@ -40,7 +40,7 @@ func TestListEmailThreads_Success(t *testing.T) {
 				Subject:         "Second thread subject",
 				Preview:         "Preview of second email...",
 				FromEmail:       "bob@example.com",
-				Email:     "user@ravi.id",
+				Email:           "user@ravi.id",
 				MessageCount:    1,
 				UnreadCount:     0,
 				LatestMessageDt: time.Date(2024, 1, 14, 10, 0, 0, 0, time.UTC),
@@ -86,6 +86,37 @@ func TestListEmailThreads_Success(t *testing.T) {
 	}
 }
 
+// TestListEmailThreads_ScopedByIdentity verifies ?identity= is sent so a
+// management key can list another identity's mailbox.
+func TestListEmailThreads_ScopedByIdentity(t *testing.T) {
+	const wantUUID = "def3bb6c-c893-45c8-bb2e-7b44126d2909"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != PathEmailInbox {
+			t.Errorf("path = %s, want %s", r.URL.Path, PathEmailInbox)
+		}
+		if got := r.URL.Query().Get("identity"); got != wantUUID {
+			t.Errorf("identity param = %q, want %s", got, wantUUID)
+			// Flag ignored: empty inbox of the bound identity.
+			json.NewEncoder(w).Encode([]EmailThread{})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]EmailThread{
+			{ThreadID: "kate-thread", Subject: "Kate mail", FromEmail: "a@b.com"},
+		})
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL).WithIdentity(wantUUID)
+	threads, err := client.ListEmailThreads(false)
+	if err != nil {
+		t.Fatalf("ListEmailThreads() error = %v", err)
+	}
+	if len(threads) != 1 || threads[0].ThreadID != "kate-thread" {
+		t.Fatalf("threads = %#v, want Kate's thread (empty means ?identity= was dropped)", threads)
+	}
+}
+
 // TestListEmailThreads_UnreadOnly verifies that ListEmailThreads filters unread threads.
 func TestListEmailThreads_UnreadOnly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +132,7 @@ func TestListEmailThreads_UnreadOnly(t *testing.T) {
 				Subject:      "Unread thread",
 				Preview:      "This thread has unread messages",
 				FromEmail:    "sender@example.com",
-				Email:  "user@ravi.id",
+				Email:        "user@ravi.id",
 				MessageCount: 2,
 				UnreadCount:  2,
 			},
@@ -246,24 +277,24 @@ func TestListSMSConversations_Success(t *testing.T) {
 
 		conversations := []SMSConversation{
 			{
-				ConversationID:    "+15551234567:+15559876543",
-				FromNumber:        "+15551234567",
-				Phone:       "My Phone",
-				PhoneNumber: "+15559876543",
-				Preview:           "Latest message preview...",
-				MessageCount:      5,
-				UnreadCount:       2,
-				LatestMessageDt:   time.Date(2024, 1, 15, 16, 0, 0, 0, time.UTC),
+				ConversationID:  "+15551234567:+15559876543",
+				FromNumber:      "+15551234567",
+				Phone:           "My Phone",
+				PhoneNumber:     "+15559876543",
+				Preview:         "Latest message preview...",
+				MessageCount:    5,
+				UnreadCount:     2,
+				LatestMessageDt: time.Date(2024, 1, 15, 16, 0, 0, 0, time.UTC),
 			},
 			{
-				ConversationID:    "+15552223333:+15559876543",
-				FromNumber:        "+15552223333",
-				Phone:       "My Phone",
-				PhoneNumber: "+15559876543",
-				Preview:           "Another conversation...",
-				MessageCount:      10,
-				UnreadCount:       0,
-				LatestMessageDt:   time.Date(2024, 1, 14, 12, 0, 0, 0, time.UTC),
+				ConversationID:  "+15552223333:+15559876543",
+				FromNumber:      "+15552223333",
+				Phone:           "My Phone",
+				PhoneNumber:     "+15559876543",
+				Preview:         "Another conversation...",
+				MessageCount:    10,
+				UnreadCount:     0,
+				LatestMessageDt: time.Date(2024, 1, 14, 12, 0, 0, 0, time.UTC),
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -313,13 +344,13 @@ func TestListSMSConversations_UnreadOnly(t *testing.T) {
 
 		conversations := []SMSConversation{
 			{
-				ConversationID:    "+15551234567:+15559876543",
-				FromNumber:        "+15551234567",
-				Phone:       "My Phone",
-				PhoneNumber: "+15559876543",
-				Preview:           "Unread message...",
-				MessageCount:      3,
-				UnreadCount:       1,
+				ConversationID: "+15551234567:+15559876543",
+				FromNumber:     "+15551234567",
+				Phone:          "My Phone",
+				PhoneNumber:    "+15559876543",
+				Preview:        "Unread message...",
+				MessageCount:   3,
+				UnreadCount:    1,
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -358,7 +389,7 @@ func TestGetSMSConversation_Success(t *testing.T) {
 		conversationDetail := SMSConversationDetail{
 			ConversationID: conversationID,
 			FromNumber:     "+15551234567",
-			Phone:    "My Phone",
+			Phone:          "My Phone",
 			MessageCount:   3,
 			Messages: []SMSMessage{
 				{
@@ -532,7 +563,7 @@ func TestGetSMSConversation_URLEncoding(t *testing.T) {
 				conversationDetail := SMSConversationDetail{
 					ConversationID: tc.conversationID,
 					FromNumber:     "+15551234567",
-					Phone:    "My Phone",
+					Phone:          "My Phone",
 					MessageCount:   0,
 					Messages:       []SMSMessage{},
 				}

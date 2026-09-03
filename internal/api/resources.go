@@ -43,11 +43,18 @@ func (c *Client) phoneFromIdentity(uuid string) (*Phone, error) {
 	return &Phone{PhoneNumber: ident.Phone}, nil
 }
 
-// GetEmail fetches the user's assigned Ravi email address.
-// Returns the first email address associated with the authenticated user.
+// GetEmail fetches the identity's assigned Ravi email address.
+// When the client is scoped with WithIdentity, the address is taken from
+// GET /api/identities/<uuid>/ — not the first row of GET /api/email/, which
+// may ignore ?identity= or return empty when the caller is using an
+// identity-scoped key fenced to a different mailbox.
 func (c *Client) GetEmail() (*Email, error) {
+	if c.identity != "" {
+		return c.emailFromIdentity(c.identity)
+	}
+
 	var result []Email
-	if err := c.doAuthenticatedRequest(http.MethodGet, c.scopedPath(PathEmail, nil), nil, &result); err != nil {
+	if err := c.doAuthenticatedRequest(http.MethodGet, PathEmail, nil, &result); err != nil {
 		return nil, err
 	}
 
@@ -56,6 +63,17 @@ func (c *Client) GetEmail() (*Email, error) {
 	}
 
 	return &result[0], nil
+}
+
+func (c *Client) emailFromIdentity(uuid string) (*Email, error) {
+	ident, err := c.GetIdentity(uuid)
+	if err != nil {
+		return nil, err
+	}
+	if ident.Email == "" {
+		return nil, fmt.Errorf("no email address assigned")
+	}
+	return &Email{Email: ident.Email}, nil
 }
 
 // GetOwner fetches the account owner's profile information.

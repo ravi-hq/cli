@@ -21,8 +21,8 @@ type Client struct {
 	apiKey     string // management key or identity key
 	userEmail  string
 	// identity is an optional identity UUID appended as ?identity=<uuid> to
-	// per-identity calls (contacts, passwords, secrets, calls, events,
-	// messages). Empty means "let the key decide" — behaviour is unchanged.
+	// per-identity calls (inbox, get, contacts, passwords, secrets, calls,
+	// events, messages). Empty means "let the key decide" — behaviour is unchanged.
 	identity string
 }
 
@@ -184,8 +184,9 @@ func (c *Client) BuildURL(path string, params url.Values) string {
 }
 
 // WithIdentity returns the client scoped to the given identity UUID. The UUID
-// is appended as ?identity=<uuid> to per-identity calls. An empty uuid is a
-// no-op, leaving scoping to the active key. Returns the receiver for chaining.
+// is appended as ?identity=<uuid> to per-identity calls (inbox, messages,
+// vault). An empty uuid is a no-op, leaving scoping to the active key.
+// Returns the receiver for chaining.
 func (c *Client) WithIdentity(uuid string) *Client {
 	c.identity = uuid
 	return c
