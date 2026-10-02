@@ -67,16 +67,16 @@ cd cli
 make build
 ```
 
-### Claude Code Plugin
+### Claude Code
 
-If you use [Claude Code](https://claude.ai/code), install the plugin so Claude can use `ravi` autonomously:
+If you use [Claude Code](https://claude.ai/code), install the plugin from [ravi-hq/ravi-skills](https://github.com/ravi-hq/ravi-skills) so Claude can use `ravi`:
 
 ```bash
-claude plugin marketplace add ravi-hq/claude-code-plugin
-claude plugin install ravi@ravi
+claude plugin marketplace add ravi-hq/ravi-skills
+claude plugin install ravi@ravi-hq
 ```
 
-See [docs/claude-code-plugin.md](docs/claude-code-plugin.md) for details.
+The marketplace catalog name in that repo is `ravi-hq`, and the plugin name is `ravi`. See [docs/claude-code.md](docs/claude-code.md). Product docs: [docs.ravi.app](https://docs.ravi.app).
 
 ## Quick Start
 
