@@ -68,7 +68,7 @@ var identityUseCmd = &cobra.Command{
 
 This is not a multi-agent or multi-session switcher. Shared ~/.ravi/config.json
 cannot run multiple agents. Several agents on one host should call
-https://api.ravi.app with per-identity ravi_id_ keys, or use the Cursor MCP
+https://api.ravi.id with per-identity ravi_id_ keys, or use the Cursor MCP
 Connect card.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

@@ -50,7 +50,7 @@ func TestGetAPIBaseURL_Hosted(t *testing.T) {
 		t.Fatalf("GetAPIBaseURL() unexpected error = %v", err)
 	}
 
-	want := "https://api.ravi.app"
+	want := "https://api.ravi.id"
 	if got != want {
 		t.Errorf("GetAPIBaseURL() = %v, want %v", got, want)
 	}

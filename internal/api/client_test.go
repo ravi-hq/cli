@@ -164,8 +164,8 @@ func TestNewClient_NoAPIURL(t *testing.T) {
 		t.Fatal("NewClient() client = nil, want non-nil")
 	}
 
-	if !strings.Contains(client.baseURL, "ravi.app") {
-		t.Errorf("client.baseURL = %v, want to contain 'ravi.app'", client.baseURL)
+	if client.baseURL != "https://api.ravi.id" {
+		t.Errorf("client.baseURL = %v, want https://api.ravi.id", client.baseURL)
 	}
 }
 
@@ -718,8 +718,8 @@ func TestNewManagementClient_NoAPIURL(t *testing.T) {
 		t.Fatal("NewManagementClient() client = nil, want non-nil")
 	}
 
-	if !strings.Contains(client.baseURL, "ravi.app") {
-		t.Errorf("client.baseURL = %v, want to contain 'ravi.app'", client.baseURL)
+	if client.baseURL != "https://api.ravi.id" {
+		t.Errorf("client.baseURL = %v, want https://api.ravi.id", client.baseURL)
 	}
 }
 
@@ -761,8 +761,8 @@ func TestNewUnauthenticatedClient_NoAPIURL(t *testing.T) {
 		t.Fatal("NewUnauthenticatedClient() client = nil, want non-nil")
 	}
 
-	if !strings.Contains(client.baseURL, "ravi.app") {
-		t.Errorf("client.baseURL = %v, want to contain 'ravi.app'", client.baseURL)
+	if client.baseURL != "https://api.ravi.id" {
+		t.Errorf("client.baseURL = %v, want https://api.ravi.id", client.baseURL)
 	}
 }
 

@@ -10,7 +10,7 @@ You have access to `ravi`, a CLI that gives you your own phone number, email add
 The CLI holds **one active identity per machine / config file** (`~/.ravi/config.json`). That file cannot run multiple agents. `ravi identity use` replaces the single active identity; it is not a multi-agent switcher.
 
 - **Cursor:** use the MCP Connect card (per-agent credentials), not `ravi auth login`.
-- **Several agents on one host:** call https://api.ravi.app with per-identity `ravi_id_` keys (`Authorization: Bearer ravi_id_...`).
+- **Several agents on one host:** call https://api.ravi.id with per-identity `ravi_id_` keys (`Authorization: Bearer ravi_id_...`).
 - `--identity` scopes a single request so it does not leak another identity's resources (inbox, get email/phone, auth status, contacts, passwords, secrets, calls, messages). It does not change the machine's active identity — do not run `ravi identity use` for a one-shot inbox read.
 
 ## Prerequisites

@@ -34,7 +34,7 @@ first use. Then bind this machine's CLI (one identity per config file):
 ravi auth login
 ```
 
-That is an RFC 8628 device-code flow against https://api.ravi.app. Open
+That is an RFC 8628 device-code flow against https://api.ravi.id. Open
 https://ravi.id/device and enter the code the CLI prints. Keys
 (`ravi_mgmt_` / `ravi_id_`) go in `~/.ravi/config.json`. Auth commands
 are `login` / `logout` / `status` only.

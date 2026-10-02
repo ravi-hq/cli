@@ -258,13 +258,25 @@ func TestDeviceVerifyURL(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "production API verify path",
+			name:   "canonical api.ravi.id verify path",
+			apiURI: "https://api.ravi.id/api/auth/device/verify/",
+			code:   "TEST-1234",
+			want:   "https://ravi.id/device?user_code=TEST-1234",
+		},
+		{
+			name:   "canonical api.ravi.id verify path without trailing slash",
+			apiURI: "https://api.ravi.id/api/auth/device/verify",
+			code:   "ABCD-EFGH",
+			want:   "https://ravi.id/device?user_code=ABCD-EFGH",
+		},
+		{
+			name:   "dual-serve api.ravi.app verify path",
 			apiURI: "https://api.ravi.app/api/auth/device/verify/",
 			code:   "TEST-1234",
 			want:   "https://ravi.id/device?user_code=TEST-1234",
 		},
 		{
-			name:   "production API verify path without trailing slash",
+			name:   "dual-serve api.ravi.app verify path without trailing slash",
 			apiURI: "https://api.ravi.app/api/auth/device/verify",
 			code:   "ABCD-EFGH",
 			want:   "https://ravi.id/device?user_code=ABCD-EFGH",
@@ -306,7 +318,13 @@ func TestDeviceVerifyURL(t *testing.T) {
 			want:   "http://127.0.0.1:0/verify?user_code=TEST-1234",
 		},
 		{
-			name:   "empty user code omits query",
+			name:   "canonical API empty user code omits query",
+			apiURI: "https://api.ravi.id/api/auth/device/verify/",
+			code:   "",
+			want:   "https://ravi.id/device",
+		},
+		{
+			name:   "dual-serve API empty user code omits query",
 			apiURI: "https://api.ravi.app/api/auth/device/verify/",
 			code:   "",
 			want:   "https://ravi.id/device",
@@ -933,7 +951,7 @@ func TestRun_PrintsPublicDeviceURL(t *testing.T) {
 			json.NewEncoder(w).Encode(api.DeviceCodeResponse{
 				DeviceCode:      "test-device-code",
 				UserCode:        "TEST-1234",
-				VerificationURI: "https://api.ravi.app/api/auth/device/verify/",
+				VerificationURI: "https://api.ravi.id/api/auth/device/verify/",
 				ExpiresIn:       300,
 				Interval:        0,
 			})
@@ -969,7 +987,7 @@ func TestRun_PrintsPublicDeviceURL(t *testing.T) {
 	if !strings.Contains(out, wantURL) {
 		t.Errorf("Run() stdout missing public device URL %q, got:\n%s", wantURL, out)
 	}
-	if strings.Contains(out, "api.ravi.app") || strings.Contains(out, "/api/auth/device/verify") {
+	if strings.Contains(out, "api.ravi.id") || strings.Contains(out, "api.ravi.app") || strings.Contains(out, "/api/auth/device/verify") {
 		t.Errorf("Run() stdout still prints API verify path, got:\n%s", out)
 	}
 	if !strings.Contains(out, "TEST-1234") {
