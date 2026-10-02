@@ -86,7 +86,7 @@ that single active identity; it is not a multi-agent runtime.
 
 - **Cursor:** use the MCP Connect card (per-agent credentials). That is the
   first-class path — not `ravi auth login`.
-- **Multiple agents on one host:** call the HTTP API at https://api.ravi.app
+- **Multiple agents on one host:** call the HTTP API at https://api.ravi.id
   with a per-identity `ravi_id_` key (`Authorization: Bearer ravi_id_...`).
 - **This machine's CLI:** `ravi auth login` binds one identity into
   `~/.ravi/config.json` (or `.ravi/config.json` in the current directory).
@@ -97,7 +97,7 @@ that single active identity; it is not a multi-agent runtime.
    ravi auth login
    ```
 
-   This is an RFC 8628 device-code flow against https://api.ravi.app. Open
+   This is an RFC 8628 device-code flow against https://api.ravi.id. Open
    https://ravi.id/device and enter the code the CLI prints (it also tries to
    open your browser). Keys (`ravi_mgmt_` / `ravi_id_`) are stored in
    `~/.ravi/config.json`.
@@ -129,7 +129,7 @@ only commands are:
 
 | Command | Description |
 |---------|-------------|
-| `ravi auth login` | RFC 8628 device-code login against https://api.ravi.app. Visit https://ravi.id/device and enter the printed code. Stores `ravi_mgmt_` / `ravi_id_` keys in `~/.ravi/config.json`. |
+| `ravi auth login` | RFC 8628 device-code login against https://api.ravi.id. Visit https://ravi.id/device and enter the printed code. Stores `ravi_mgmt_` / `ravi_id_` keys in `~/.ravi/config.json`. |
 | `ravi auth logout` | Clear stored credentials |
 | `ravi auth status` | Show current authentication status |
 
@@ -216,7 +216,7 @@ identity's number, not the first row of the account phone list). An identity-sco
 
 To run several agents on one host, do not share `~/.ravi/config.json` and do not
 treat `ravi identity use` as a session switcher. Give each agent its own
-`ravi_id_` key and call https://api.ravi.app, or use the Cursor MCP Connect card.
+`ravi_id_` key and call https://api.ravi.id, or use the Cursor MCP Connect card.
 
 ## JSON Output for AI Agents
 
@@ -276,7 +276,7 @@ That file holds **one active identity**. Sharing it across agents is unsupported
 - **`identity_uuid`** + **`identity_name`** — which identity is currently active
 - **`user_email`** — the account email from device-code login
 
-The API host is https://api.ravi.app. Requests send the API key as
+The default API host is https://api.ravi.id. Set `RAVI_API_URL` to use another host. Requests send the API key as
 `Authorization: Bearer <key>`. There is no `RAVI_ACCESS_TOKEN`, no
 `X-Ravi-Identity` header, and no token refresh command.
 

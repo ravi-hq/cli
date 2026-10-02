@@ -17,7 +17,8 @@ var (
 
 	// APIBaseURL is the hosted Ravi API host. It is a var (not a const) so the
 	// release build can inject it via `-ldflags "-X .../version.APIBaseURL=..."`.
-	APIBaseURL = "https://api.ravi.app"
+	// RAVI_API_URL still overrides this default at runtime.
+	APIBaseURL = "https://api.ravi.id"
 )
 
 const (
@@ -35,7 +36,7 @@ func Info() string {
 
 // GetAPIBaseURL returns the configured API base URL. It prefers the RAVI_API_URL
 // env override, then the test-only override under `go test`, and otherwise the
-// hosted default (https://api.ravi.app).
+// hosted default (https://api.ravi.id).
 func GetAPIBaseURL() (string, error) {
 	if value := os.Getenv(apiBaseURLEnv); value != "" {
 		return value, nil

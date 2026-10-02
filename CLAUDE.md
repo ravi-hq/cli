@@ -50,7 +50,7 @@ ravi feedback "Your feedback message"   # Send feedback to Ravi team
 ravi auth status                  # Check authentication
 ```
 
-**CLI model:** one active identity per machine / config file. Shared `~/.ravi/config.json` cannot run multiple agents. Cursor agents should use the MCP Connect card (per-agent credentials), not `ravi auth login`. Several agents on one host call https://api.ravi.app with per-identity `ravi_id_` keys.
+**CLI model:** one active identity per machine / config file. Shared `~/.ravi/config.json` cannot run multiple agents. Cursor agents should use the MCP Connect card (per-agent credentials), not `ravi auth login`. Several agents on one host call https://api.ravi.id with per-identity `ravi_id_` keys.
 
 **Agent workflow (this machine's CLI):** get email/phone → sign up for service → wait → check inbox for OTP → complete verification.
 
@@ -109,7 +109,7 @@ Resolution order (still one identity, not a multi-agent runtime):
 
 - **Output formatting**: Default is JSON. `--human` flag switches to human-readable. Global `output.Current` switches at runtime via `PersistentPreRun`
 - **Auth**: API key sent as header on every request. `management_key` for account-level ops, `identity_key` for identity-scoped ops
-- **Hosted API**: API host is built in; there is no runtime or build-time API URL setting
+- **Hosted API**: Default host is https://api.ravi.id. `RAVI_API_URL` overrides it at runtime; release builds can also inject `APIBaseURL` via ldflags
 
 ## Code Style
 

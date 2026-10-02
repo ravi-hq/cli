@@ -62,7 +62,7 @@ multiple agents. ravi identity use replaces the single active identity; it
 is not a multi-agent switcher.
 
 Cursor: use the MCP Connect card (per-agent credentials), not ravi auth login.
-Several agents on one host: call https://api.ravi.app with per-identity
+Several agents on one host: call https://api.ravi.id with per-identity
 ravi_id_ keys.
 
 CLI login on this machine: ravi auth login (RFC 8628 device-code; human

@@ -1327,7 +1327,7 @@ func TestLoginCmd(t *testing.T) {
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"device_code":      "test-device-code",
 				"user_code":        "TEST-1234",
-				"verification_uri": "https://api.ravi.app/api/auth/device/verify/",
+				"verification_uri": "https://api.ravi.id/api/auth/device/verify/",
 				"expires_in":       300,
 				"interval":         0,
 			})
@@ -1366,7 +1366,7 @@ func TestLoginCmd(t *testing.T) {
 	if !strings.Contains(out, wantURL) {
 		t.Errorf("loginCmd stdout missing public device URL %q, got:\n%s", wantURL, out)
 	}
-	if strings.Contains(out, "/api/auth/device/verify") {
+	if strings.Contains(out, "api.ravi.id") || strings.Contains(out, "api.ravi.app") || strings.Contains(out, "/api/auth/device/verify") {
 		t.Errorf("loginCmd stdout still prints API verify path, got:\n%s", out)
 	}
 	if openedURL != wantURL {

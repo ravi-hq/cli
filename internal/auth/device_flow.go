@@ -21,9 +21,10 @@ const (
 	// DefaultSpinnerCharSet is the Braille spinner pattern (index 14 in yacspin).
 	DefaultSpinnerCharSet = 14
 
-	// PublicDeviceURL is the user-facing device-login page. The API currently
-	// returns https://api.ravi.app/api/auth/device/verify/ as verification_uri;
-	// that is an implementation path, not the public front door documented for
+	// PublicDeviceURL is the user-facing device-login page. The canonical API
+	// origin is https://api.ravi.id (https://api.ravi.app still dual-serves).
+	// Either host may return /api/auth/device/verify/ as verification_uri; that
+	// is an implementation path, not the public front door documented for
 	// humans and agents (https://ravi.id/device).
 	PublicDeviceURL = "https://ravi.id/device"
 )
@@ -307,7 +308,7 @@ func deviceVerifyURL(apiVerificationURI, userCode string) string {
 
 func isHostedAPIHost(host string) bool {
 	switch strings.ToLower(host) {
-	case "api.ravi.app", "ravi.app", "www.ravi.app", "ravi.id", "www.ravi.id":
+	case "api.ravi.id", "api.ravi.app", "ravi.app", "www.ravi.app", "ravi.id", "www.ravi.id":
 		return true
 	default:
 		return false
