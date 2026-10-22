@@ -1,6 +1,6 @@
 module github.com/ravi-hq/cli
 
-go 1.25.6
+go 1.26.10
 
 require (
 	github.com/briandowns/spinner v1.23.0
